@@ -59,23 +59,6 @@ def print_rc(new_data): # 解析新更改数据并输出
             elif item['type'] == 'external': # 未知类型，直接输出原文
                 print(item)
 
-def print_abuselog(new_log): # 解析新滥用日志并输出
-    if new_log:
-        for item in new_log:
-            formatted_time = format_timestamp(item['timestamp'])
-            if item['type'] == 'log':
-                action_display = "编辑" if item['action'] == "edit" else \
-                    "创建账号" if item['action'] == "createaccount" else \
-                        "移动" if item['action'] == "move" else \
-                            item['action']
-                result_display = "警告" if item['result'] == "warn" else \
-                    "标签" if item['result'] == "tag" else \
-                        "无" if item['result'] == "" else \
-                            "阻止" if item['result'] == "disallow" else \
-                                "封禁" if item['result'] == "block" else \
-                                    item['result']
-                print(f"{formatted_time}，{item['user']}在{item['title']}执行{action_display}操作时触发了过滤器“{item['filter']}”。采取的行动：{result_display}（https://zh.minecraft.wiki/w/Special:%E6%BB%A5%E7%94%A8%E6%97%A5%E5%BF%97/{item['id']}）")
-
 def get_data(api_url): # 从Mediawiki API获取数据
     try:
         response = requests.get(api_url,headers={"User-Agent": "AblazeVase69188's recent changes monitor (355846525@qq.com)"})
@@ -94,15 +77,13 @@ with open("config.json", "r") as config_file:
 site = wiki.Site("https://zh.minecraft.wiki/api.php", retry_after_conn=30)
 site.login(username, password)
 
-# 最近更改：不要获取机器人编辑，每次获取25个编辑（SimpleBatchUpload大约每秒最多上传5个文件）；滥用日志：每次获取10个日志
+# 最近更改：不要获取机器人编辑，每次获取25个编辑（SimpleBatchUpload大约每秒最多上传5个文件）
 rc_url = "https://zh.minecraft.wiki/api.php?action=query&format=json&list=recentchanges&formatversion=2&rcprop=user%7Ctitle%7Ctimestamp%7Cids%7Cloginfo%7Csizes%7Ccomment&rcshow=!bot&rclimit=25&rctype=edit%7Cnew%7Clog%7Cexternal"
-abuselog_url = "https://zh.minecraft.wiki/api.php?action=query&format=json&prop=&list=abuselog&meta=&formatversion=2&afllimit=10&aflprop=ids%7Cuser%7Ctitle%7Caction%7Cresult%7Ctimestamp%7Cfilter"
 
 # 给第一次循环准备对比数据
 data1 = get_data(rc_url)
-log1 = get_data(abuselog_url)
 
-while 1: # 主循环，每5秒获取一次最近更改数据，每30秒获取一次滥用日志数据
+while 1: # 主循环，每5秒获取一次最近更改数据
     time.sleep(5)
     data2 = get_data(rc_url)
 

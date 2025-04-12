@@ -13,7 +13,7 @@ def format_timestamp(timestamp_str): # 将UTC时间改为UTC+8
 def format_comment(comment): # 摘要为空时输出（空）而不是【】
     return "（空）" if comment == "" else f"【{comment}】"
 
-def printrc(new_data): # 解析新更改数据并输出
+def print_rc(new_data): # 解析新更改数据并输出
     if new_data:
         for item in new_data:
             length_difference = item['newlen'] - item['oldlen']
@@ -21,15 +21,13 @@ def printrc(new_data): # 解析新更改数据并输出
             comment_display = format_comment(item['comment'])
             if item['type'] == 'log': # pycharm自动缩进有点难绷
                 logtype_display = "用户创建" if item['logtype'] == "newusers" else \
-                    "上传" if item['logtype'] == "upload" else \
-                        "删除" if item['logtype'] == "delete" else \
-                            "移动" if item['logtype'] == "move" else \
-                                "封禁" if item['logtype'] == "block" else \
-                                    "保护" if item['logtype'] == "protect" else \
-                                        "滥用过滤器" if item['logtype'] == "abusefilter" else \
-                                            "用户权限" if item['logtype'] == "rights" else \
-                                                "移动" if item['logtype'] == "move" else \
-                                                    item['logtype']
+                    "删除" if item['logtype'] == "delete" else \
+                        "封禁" if item['logtype'] == "block" else \
+                            "保护" if item['logtype'] == "protect" else \
+                                "滥用过滤器" if item['logtype'] == "abusefilter" else \
+                                    "用户权限" if item['logtype'] == "rights" else \
+                                        "移动" if item['logtype'] == "move" else \
+                                            item['logtype']
                 logaction_display = "创建" if item['logaction'] == "create" else \
                     "上传" if item['logaction'] == "upload" else \
                         "删除" if item['logaction'] == "delete" else \
@@ -48,7 +46,12 @@ def printrc(new_data): # 解析新更改数据并输出
                                                                             "权限更改" if item['logaction'] == "rights" else \
                                                                                 "移动" if item['logaction'] == "move" else \
                                                                                     item['logaction']
-                print(f"（{logtype_display}日志）{formatted_time}，{item['user']}对{item['title']}执行了{logaction_display}操作，摘要为{comment_display}。")
+                if item['logtype'] == "upload":
+                    print(f"（上传日志）{formatted_time}，{item['user']}对{item['title']}执行了{logaction_display}操作，摘要为{comment_display}。（https://zh.minecraft.wiki/?diff={item['revid']}）（特殊巡查：https://zh.minecraft.wiki/index.php?curid={item['pageid']}&action=markpatrolled&rcid={item['rcid']}）")
+                elif item['logtype'] == "move":
+                    print(f"（移动日志）{formatted_time}，{item['user']}对{item['title']}执行了{logaction_display}操作，摘要为{comment_display}。（https://zh.minecraft.wiki/?diff={item['revid']}）")
+                else:
+                    print(f"（{logtype_display}日志）{formatted_time}，{item['user']}对{item['title']}执行了{logaction_display}操作，摘要为{comment_display}。")
             elif item['type'] == 'edit':
                 print(f"{formatted_time}，{item['user']}在{item['title']}做出编辑，字节更改为{length_difference}，摘要为{comment_display}。（https://zh.minecraft.wiki/?diff={item['revid']}）（特殊巡查：https://zh.minecraft.wiki/index.php?curid={item['pageid']}&action=markpatrolled&rcid={item['rcid']}）")
             elif item['type'] == 'new':
@@ -88,7 +91,7 @@ while 1: # 主循环，每5秒获取一次数据
     timestamps2 = [item['timestamp'] for item in data1['query']['recentchanges']]
     new_timestamps = [ts for ts in timestamps2 if ts not in timestamps1]
     new_data = [item for item in data1['query']['recentchanges'] if item['timestamp'] in new_timestamps]
-    printrc(new_data)
+    print_rc(new_data)
 
     time.sleep(5)
     data2 = get_data()
@@ -98,4 +101,4 @@ while 1: # 主循环，每5秒获取一次数据
     timestamps2 = [item['timestamp'] for item in data2['query']['recentchanges']]
     new_timestamps = [ts for ts in timestamps2 if ts not in timestamps1]
     new_data = [item for item in data2['query']['recentchanges'] if item['timestamp'] in new_timestamps]
-    printrc(new_data)
+    print_rc(new_data)

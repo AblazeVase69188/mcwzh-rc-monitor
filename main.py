@@ -10,11 +10,15 @@ def format_timestamp(timestamp_str): # 将UTC时间改为UTC+8
     timestamp += timedelta(hours=8)
     return timestamp.strftime('%H:%M:%S')
 
+def format_comment(comment): # 摘要为空时输出（空）而不是【】
+    return "（空）" if comment == "" else f"【{comment}】"
+
 def printrc(new_data): # 解析新更改数据并输出
     if new_data:
         for item in new_data:
             length_difference = item['newlen'] - item['oldlen']
             formatted_time = format_timestamp(item['timestamp'])
+            comment_display = format_comment(item['comment'])
             if item['type'] == 'log': # pycharm自动缩进有点难绷
                 logtype_display = "用户创建" if item['logtype'] == "newusers" else \
                     "上传" if item['logtype'] == "upload" else \
@@ -44,16 +48,16 @@ def printrc(new_data): # 解析新更改数据并输出
                                                                             "权限更改" if item['logaction'] == "rights" else \
                                                                                 "移动" if item['logaction'] == "move" else \
                                                                                     item['logaction']
-                print(f"（{logtype_display}日志）{formatted_time}，{item['user']}对{item['title']}执行了{logaction_display}操作。")
+                print(f"（{logtype_display}日志）{formatted_time}，{item['user']}对{item['title']}执行了{logaction_display}操作，摘要为{comment_display}。")
             elif item['type'] == 'edit':
-                print(f"{formatted_time}，{item['user']}在{item['title']}做出编辑，字节更改为{length_difference}。（https://zh.minecraft.wiki/?diff={item['revid']}）（特殊巡查：https://zh.minecraft.wiki/index.php?curid={item['pageid']}&action=markpatrolled&rcid={item['rcid']}）")
+                print(f"{formatted_time}，{item['user']}在{item['title']}做出编辑，字节更改为{length_difference}，摘要为{comment_display}。（https://zh.minecraft.wiki/?diff={item['revid']}）（特殊巡查：https://zh.minecraft.wiki/index.php?curid={item['pageid']}&action=markpatrolled&rcid={item['rcid']}）")
             elif item['type'] == 'new':
-                print(f"{formatted_time}，{item['user']}创建{item['title']}，字节更改为{length_difference}。（https://zh.minecraft.wiki/?diff={item['revid']}）（特殊巡查：https://zh.minecraft.wiki/index.php?curid={item['pageid']}&action=markpatrolled&rcid={item['rcid']}）")
+                print(f"{formatted_time}，{item['user']}创建{item['title']}，字节更改为{length_difference}，摘要为{comment_display}。（https://zh.minecraft.wiki/?diff={item['revid']}）（特殊巡查：https://zh.minecraft.wiki/index.php?curid={item['pageid']}&action=markpatrolled&rcid={item['rcid']}）")
             elif item['type'] == 'external': # 未知类型，直接输出原文
                 print(item)
 
 def get_data(): # 从Mediawiki API获取数据
-    api_url = "https://zh.minecraft.wiki/api.php?action=query&format=json&list=recentchanges&formatversion=2&rcprop=user%7Ctitle%7Ctimestamp%7Cids%7Cloginfo%7Csizes&rcshow=!bot&rclimit=25&rctype=edit%7Cnew%7Clog%7Cexternal"
+    api_url = "https://zh.minecraft.wiki/api.php?action=query&format=json&list=recentchanges&formatversion=2&rcprop=user%7Ctitle%7Ctimestamp%7Cids%7Cloginfo%7Csizes%7Ccomment&rcshow=!bot&rclimit=25&rctype=edit%7Cnew%7Clog%7Cexternal"
     # 设置：不要获取机器人编辑，每次获取25个编辑（SimpleBatchUpload大约每秒最多上传5个文件）
     try:
         response = requests.get(api_url,headers={"User-Agent": "AblazeVase69188's recent changes monitor (355846525@qq.com)"})

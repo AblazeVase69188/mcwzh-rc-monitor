@@ -47,17 +47,17 @@ def print_rc(new_data): # 解析新更改数据并输出
                                                                                 "移动" if item['logaction'] == "move" else \
                                                                                     item['logaction']
                 if item['logtype'] == "upload":
-                    print(f"（上传日志）{formatted_time}，{item['user']}对{item['title']}执行了{logaction_display}操作，摘要为{comment_display}。（https://zh.minecraft.wiki/?diff={item['revid']}）（特殊巡查：https://zh.minecraft.wiki/index.php?curid={item['pageid']}&action=markpatrolled&rcid={item['rcid']}）")
+                    print(f"（上传日志）{formatted_time}，{item['user']}对{item['title']}执行了{logaction_display}操作，摘要为{comment_display}。（https://zh.minecraft.wiki/?diff={item['revid']}）（特殊巡查：https://zh.minecraft.wiki/index.php?curid={item['pageid']}&action=markpatrolled&rcid={item['rcid']}）",end='\n\n')
                 elif item['logtype'] == "move":
-                    print(f"（移动日志）{formatted_time}，{item['user']}对{item['title']}执行了{logaction_display}操作，摘要为{comment_display}。（https://zh.minecraft.wiki/?diff={item['revid']}）")
+                    print(f"（移动日志）{formatted_time}，{item['user']}对{item['title']}执行了{logaction_display}操作，摘要为{comment_display}。（https://zh.minecraft.wiki/?diff={item['revid']}）",end='\n\n')
                 else:
-                    print(f"（{logtype_display}日志）{formatted_time}，{item['user']}对{item['title']}执行了{logaction_display}操作，摘要为{comment_display}。")
+                    print(f"（{logtype_display}日志）{formatted_time}，{item['user']}对{item['title']}执行了{logaction_display}操作，摘要为{comment_display}。",end='\n\n')
             elif item['type'] == 'edit':
-                print(f"{formatted_time}，{item['user']}在{item['title']}做出编辑，字节更改为{length_difference}，摘要为{comment_display}。（https://zh.minecraft.wiki/?diff={item['revid']}）（特殊巡查：https://zh.minecraft.wiki/index.php?curid={item['pageid']}&action=markpatrolled&rcid={item['rcid']}）")
+                print(f"{formatted_time}，{item['user']}在{item['title']}做出编辑，字节更改为{length_difference}，摘要为{comment_display}。（https://zh.minecraft.wiki/?diff={item['revid']}）（特殊巡查：https://zh.minecraft.wiki/index.php?curid={item['pageid']}&action=markpatrolled&rcid={item['rcid']}）",end='\n\n')
             elif item['type'] == 'new':
-                print(f"{formatted_time}，{item['user']}创建{item['title']}，字节更改为{length_difference}，摘要为{comment_display}。（https://zh.minecraft.wiki/?diff={item['revid']}）（特殊巡查：https://zh.minecraft.wiki/index.php?curid={item['pageid']}&action=markpatrolled&rcid={item['rcid']}）")
+                print(f"{formatted_time}，{item['user']}创建{item['title']}，字节更改为{length_difference}，摘要为{comment_display}。（https://zh.minecraft.wiki/?diff={item['revid']}）（特殊巡查：https://zh.minecraft.wiki/index.php?curid={item['pageid']}&action=markpatrolled&rcid={item['rcid']}）",end='\n\n')
             elif item['type'] == 'external': # 未知类型，直接输出原文
-                print(item)
+                print(item,end='\n\n')
 
 def get_data(api_url): # 从Mediawiki API获取数据
     try:
@@ -76,6 +76,8 @@ with open("config.json", "r") as config_file:
     password = config["password"]
 site = wiki.Site("https://zh.minecraft.wiki/api.php", retry_after_conn=30)
 site.login(username, password)
+
+print("启动成功")
 
 # 最近更改：不要获取机器人编辑，每次获取25个编辑（SimpleBatchUpload大约每秒最多上传5个文件）
 rc_url = "https://zh.minecraft.wiki/api.php?action=query&format=json&list=recentchanges&formatversion=2&rcprop=user%7Ctitle%7Ctimestamp%7Cids%7Cloginfo%7Csizes%7Ccomment&rcshow=!bot&rclimit=25&rctype=edit%7Cnew%7Clog%7Cexternal"

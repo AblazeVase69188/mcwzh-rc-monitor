@@ -5,13 +5,20 @@ import time
 import json
 from datetime import datetime, timedelta
 
+class Colors:
+    BLUE = '\033[94m'
+    GREEN = '\033[92m'
+    CYAN = '\033[96m'
+    MAGENTA = '\033[95m'
+    RESET = '\033[0m'
+
 def format_timestamp(timestamp_str): # 将UTC时间改为UTC+8
     timestamp = datetime.strptime(timestamp_str, '%Y-%m-%dT%H:%M:%SZ')
     timestamp += timedelta(hours=8)
     return timestamp.strftime('%H:%M:%S')
 
 def format_comment(comment): # 摘要为空时输出（空）而不是【】
-    return "（空）" if comment == "" else f"【{comment}】"
+    return f"{Colors.GREEN}（空）{Colors.RESET}" if comment == "" else f"{Colors.GREEN}{comment}{Colors.RESET}"
 
 def print_rc(new_data): # 解析新更改数据并输出
     if new_data:
@@ -19,7 +26,7 @@ def print_rc(new_data): # 解析新更改数据并输出
             length_difference = item['newlen'] - item['oldlen']
             formatted_time = format_timestamp(item['timestamp'])
             comment_display = format_comment(item['comment'])
-            if item['type'] == 'log': # pycharm自动缩进有点难绷
+            if item['type'] == 'log':  # pycharm自动缩进有点难绷
                 logtype_display = "用户创建" if item['logtype'] == "newusers" else \
                     "删除" if item['logtype'] == "delete" else \
                         "封禁" if item['logtype'] == "block" else \
@@ -47,22 +54,22 @@ def print_rc(new_data): # 解析新更改数据并输出
                                                                                 "移动" if item['logaction'] == "move" else \
                                                                                     item['logaction']
                 if item['logtype'] == "upload":
-                    print(f"（上传日志）{formatted_time}，{item['user']}对{item['title']}执行了{logaction_display}操作，摘要为{comment_display}。")
-                    print(f"（https://zh.minecraft.wiki/?diff={item['revid']}）")
-                    print(f"（特殊巡查：https://zh.minecraft.wiki/index.php?curid={item['pageid']}&action=markpatrolled&rcid={item['rcid']}）",end='\n\n')
+                    print(f"（{Colors.MAGENTA}上传日志{Colors.RESET}）{Colors.CYAN}{formatted_time}{Colors.RESET}，{Colors.BLUE}{item['user']}{Colors.RESET}对{Colors.BLUE}{item['title']}{Colors.RESET}执行了{Colors.MAGENTA}{logaction_display}{Colors.RESET}操作，摘要为{comment_display}。")
+                    print(f"（{Colors.BLUE}https://zh.minecraft.wiki/?diff={item['revid']}{Colors.RESET}）")
+                    print(f"（特殊巡查：{Colors.BLUE}https://zh.minecraft.wiki/index.php?curid={item['pageid']}&action=markpatrolled&rcid={item['rcid']}{Colors.RESET}）",end='\n\n')
                 elif item['logtype'] == "move":
-                    print(f"（移动日志）{formatted_time}，{item['user']}对{item['title']}执行了{logaction_display}操作，摘要为{comment_display}。")
-                    print(f"（https://zh.minecraft.wiki/?diff={item['revid']}）",end='\n\n')
+                    print(f"（{Colors.MAGENTA}移动日志{Colors.RESET}）{Colors.CYAN}{formatted_time}{Colors.RESET}，{Colors.BLUE}{item['user']}{Colors.RESET}对{Colors.BLUE}{item['title']}{Colors.RESET}执行了{Colors.MAGENTA}{logaction_display}{Colors.RESET}操作，摘要为{comment_display}。")
+                    print(f"（{Colors.BLUE}https://zh.minecraft.wiki/?diff={item['revid']}{Colors.RESET}）", end='\n\n')
                 else:
-                    print(f"（{logtype_display}日志）{formatted_time}，{item['user']}对{item['title']}执行了{logaction_display}操作，摘要为{comment_display}。",end='\n\n')
+                    print(f"（{Colors.MAGENTA}{logtype_display}日志{Colors.RESET}）{Colors.CYAN}{formatted_time}{Colors.RESET}，{Colors.BLUE}{item['user']}{Colors.RESET}对{Colors.BLUE}{item['title']}{Colors.RESET}执行了{Colors.MAGENTA}{logaction_display}{Colors.RESET}操作，摘要为{comment_display}。",end='\n\n')
             elif item['type'] == 'edit':
-                print(f"{formatted_time}，{item['user']}在{item['title']}做出编辑，字节更改为{length_difference}，摘要为{comment_display}。")
-                print(f"（https://zh.minecraft.wiki/?diff={item['revid']}）", end='\n\n')
+                print(f"{Colors.CYAN}{formatted_time}{Colors.RESET}，{Colors.BLUE}{item['user']}{Colors.RESET}在{Colors.BLUE}{item['title']}{Colors.RESET}做出编辑，字节更改为{Colors.CYAN}{length_difference}{Colors.RESET}，摘要为{comment_display}。")
+                print(f"（{Colors.BLUE}https://zh.minecraft.wiki/?diff={item['revid']}{Colors.RESET}）", end='\n\n')
             elif item['type'] == 'new':
-                print(f"{formatted_time}，{item['user']}创建{item['title']}，字节更改为{length_difference}，摘要为{comment_display}。")
-                print(f"（https://zh.minecraft.wiki/?diff={item['revid']}）", end='\n\n')
-            elif item['type'] == 'external': # 未知类型，直接输出原文
-                print(item,end='\n\n')
+                print(f"{Colors.CYAN}{formatted_time}{Colors.RESET}，{Colors.BLUE}{item['user']}{Colors.RESET}创建{Colors.BLUE}{item['title']}{Colors.RESET}，字节更改为{Colors.CYAN}{length_difference}{Colors.RESET}，摘要为{comment_display}。")
+                print(f"（{Colors.BLUE}https://zh.minecraft.wiki/?diff={item['revid']}{Colors.RESET}）", end='\n\n')
+            elif item['type'] == 'external':  # 未知类型，直接输出原文
+                print(item, end='\n\n')
 
 def get_data(api_url): # 从Mediawiki API获取数据
     try:

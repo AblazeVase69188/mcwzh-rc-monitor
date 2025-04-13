@@ -19,7 +19,7 @@ def format_timestamp(timestamp_str): # 将UTC时间改为UTC+8
     return timestamp.strftime('%H:%M:%S')
 
 def format_comment(comment): # 摘要为空时输出（空）而不是【】
-    return f"{Colors.CYAN}（空）{Colors.RESET}" if comment == "" else f"{Colors.CYAN}{comment}{Colors.RESET}"
+    return f"（空）" if comment == "" else f"{Colors.CYAN}{comment}{Colors.RESET}"
 
 def format_user(user, special_users): # 有巡查豁免权限的用户标记为绿色
     return f"{Colors.GREEN}{user}{Colors.RESET}" if user in special_users else f"{Colors.BLUE}{user}{Colors.RESET}"

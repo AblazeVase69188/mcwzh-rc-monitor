@@ -19,7 +19,7 @@ def format_timestamp(timestamp_str): # 将UTC时间改为UTC+8
     return timestamp.strftime('%H:%M:%S')
 
 def format_comment(comment): # 摘要为空时输出（空）而不是【】
-    return f"{Colors.GREEN}（空）{Colors.RESET}" if comment == "" else f"{Colors.GREEN}{comment}{Colors.RESET}"
+    return f"{Colors.CYAN}（空）{Colors.RESET}" if comment == "" else f"{Colors.CYAN}{comment}{Colors.RESET}"
 
 def format_user(user, special_users): # 有巡查豁免权限的用户标记为绿色
     return f"{Colors.GREEN}{user}{Colors.RESET}" if user in special_users else f"{Colors.BLUE}{user}{Colors.RESET}"
@@ -68,10 +68,10 @@ def print_rc(new_data): # 解析新更改数据并输出
                 else:
                     print(f"（{Colors.MAGENTA}{logtype_display}日志{Colors.RESET}）{Colors.CYAN}{formatted_time}{Colors.RESET}，{Colors.BLUE}{user_display}{Colors.RESET}对{Colors.BLUE}{item['title']}{Colors.RESET}执行了{Colors.MAGENTA}{logaction_display}{Colors.RESET}操作，摘要为{comment_display}。",end='\n\n')
             elif item['type'] == 'edit':
-                print(f"{Colors.CYAN}{formatted_time}{Colors.RESET}，{Colors.BLUE}{user_display}{Colors.RESET}在{Colors.BLUE}{item['title']}{Colors.RESET}做出编辑，字节更改为{Colors.CYAN}{length_difference}{Colors.RESET}，摘要为{comment_display}。")
+                print(f"{Colors.CYAN}{formatted_time}{Colors.RESET}，{Colors.BLUE}{user_display}{Colors.RESET}在{Colors.BLUE}{item['title']}{Colors.RESET}做出编辑，字节更改为{Colors.MAGENTA}{length_difference}{Colors.RESET}，摘要为{comment_display}。")
                 print(f"（{Colors.YELLOW}https://zh.minecraft.wiki/?diff={item['revid']}{Colors.RESET}）", end='\n\n')
             elif item['type'] == 'new':
-                print(f"{Colors.CYAN}{formatted_time}{Colors.RESET}，{Colors.BLUE}{user_display}{Colors.RESET}创建{Colors.BLUE}{item['title']}{Colors.RESET}，字节更改为{Colors.CYAN}{length_difference}{Colors.RESET}，摘要为{comment_display}。")
+                print(f"{Colors.CYAN}{formatted_time}{Colors.RESET}，{Colors.BLUE}{user_display}{Colors.RESET}创建{Colors.BLUE}{item['title']}{Colors.RESET}，字节更改为{Colors.MAGENTA}{length_difference}{Colors.RESET}，摘要为{comment_display}。")
                 print(f"（{Colors.YELLOW}https://zh.minecraft.wiki/?diff={item['revid']}{Colors.RESET}）", end='\n\n')
             elif item['type'] == 'external': # 未知类型，直接输出原文
                 print(item, end='\n\n')

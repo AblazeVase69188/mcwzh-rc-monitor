@@ -9,6 +9,7 @@ class Colors:
     BLUE = '\033[94m'
     GREEN = '\033[92m'
     YELLOW = '\033[93m'
+    RED = '\033[91m'
     CYAN = '\033[96m'
     MAGENTA = '\033[95m'
     RESET = '\033[0m'
@@ -83,7 +84,9 @@ def get_data(api_url): # 从Mediawiki API获取数据
         data = response.json()
         return data
     except requests.exceptions.RequestException:
-        print("未获取到数据，请检查API URL或网络连接。")
+        current_time = datetime.now().strftime("%H:%M:%S")
+        print(f"（{current_time}）{Colors.RED}未获取到数据，请检查网络连接。{Colors.RESET}")
+        input("按任意键退出")
         sys.exit(1)
 
 # 登录

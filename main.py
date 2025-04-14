@@ -14,6 +14,35 @@ class Colors:
     MAGENTA = '\033[95m'
     RESET = '\033[0m'
 
+LOG_TYPE_MAP = {
+    "newusers": "用户创建",
+    "delete": "删除",
+    "block": "封禁",
+    "protect": "保护",
+    "abusefilter": "滥用过滤器",
+    "rights": "用户权限",
+    "move": "移动"
+}
+
+LOG_ACTION_MAP = {
+    "create": "创建",
+    "upload": "上传",
+    "delete": "删除",
+    "move": "移动",
+    "overwrite": "覆盖上传",
+    "block": "封禁",
+    "reblock": "更改封禁",
+    "unblock": "解除封禁",
+    "move_prot": "移动保护设置",
+    "protect": "保护",
+    "unprotect": "移除保护",
+    "modify": "修改",
+    "create2": "登录状态创建账号",
+    "byemail": "登录状态创建账号2",
+    "migrated": "迁移",
+    "rights": "权限更改"
+}
+
 def format_timestamp(timestamp_str): # 将UTC时间改为UTC+8
     timestamp = datetime.strptime(timestamp_str, '%Y-%m-%dT%H:%M:%SZ')
     timestamp += timedelta(hours=8)
@@ -25,40 +54,19 @@ def format_comment(comment): # 摘要为空时输出（空）而不是【】
 def format_user(user, special_users): # 有巡查豁免权限的用户标记为绿色
     return f"{Colors.GREEN}{user}{Colors.RESET}" if user in special_users else f"{Colors.BLUE}{user}{Colors.RESET}"
 
+def format_length_diff(newlen, oldlen):
+    return f"+{newlen-oldlen}" if newlen - oldlen > 0 else f"{newlen-oldlen}"
+
 def print_rc(new_data): # 解析新更改数据并输出
     if new_data:
         for item in new_data:
-            length_difference = item['newlen'] - item['oldlen']
+            length_difference = format_length_diff(item['newlen'], item['oldlen'])
             formatted_time = format_timestamp(item['timestamp'])
             comment_display = format_comment(item['comment'])
             user_display = format_user(item['user'], special_users)
-            if item['type'] == 'log': # pycharm自动缩进有点难绷
-                logtype_display = "用户创建" if item['logtype'] == "newusers" else \
-                    "删除" if item['logtype'] == "delete" else \
-                        "封禁" if item['logtype'] == "block" else \
-                            "保护" if item['logtype'] == "protect" else \
-                                "滥用过滤器" if item['logtype'] == "abusefilter" else \
-                                    "用户权限" if item['logtype'] == "rights" else \
-                                        "移动" if item['logtype'] == "move" else \
-                                            item['logtype']
-                logaction_display = "创建" if item['logaction'] == "create" else \
-                    "上传" if item['logaction'] == "upload" else \
-                        "删除" if item['logaction'] == "delete" else \
-                            "移动" if item['logaction'] == "move" else \
-                                "覆盖上传" if item['logaction'] == "overwrite" else \
-                                    "封禁" if item['logaction'] == "block" else \
-                                        "更改封禁" if item['logaction'] == "reblock" else \
-                                            "解除封禁" if item['logaction'] == "unblock" else \
-                                                "移动保护设置" if item['logaction'] == "move_prot" else \
-                                                    "保护" if item['logaction'] == "protect" else \
-                                                        "移除保护" if item['logaction'] == "unprotect" else \
-                                                            "修改" if item['logaction'] == "modify" else \
-                                                                "登录状态创建账号" if item['logaction'] == "create2" else \
-                                                                    "登录状态创建账号2" if item['logaction'] == "byemail" else \
-                                                                        "迁移" if item['logaction'] == "migrated" else \
-                                                                            "权限更改" if item['logaction'] == "rights" else \
-                                                                                "移动" if item['logaction'] == "move" else \
-                                                                                    item['logaction']
+            if item['type'] == 'log':
+                logtype_display = LOG_TYPE_MAP.get(item['logtype'], item['logtype'])
+                logaction_display = LOG_ACTION_MAP.get(item['logaction'], item['logaction'])
                 if item['logtype'] == "upload":
                     print(f"（{Colors.MAGENTA}上传日志{Colors.RESET}）{Colors.CYAN}{formatted_time}{Colors.RESET}，{Colors.BLUE}{user_display}{Colors.RESET}对{Colors.BLUE}{item['title']}{Colors.RESET}执行了{Colors.MAGENTA}{logaction_display}{Colors.RESET}操作，摘要为{comment_display}。")
                     print(f"（{Colors.YELLOW}https://zh.minecraft.wiki/?diff={item['revid']}{Colors.RESET}）")
@@ -81,8 +89,7 @@ def get_data(api_url): # 从Mediawiki API获取数据
     try:
         response = requests.get(api_url,headers={"User-Agent": "AblazeVase69188's recent changes monitor (355846525@qq.com)"})
         response.raise_for_status()
-        data = response.json()
-        return data
+        return response.json()
     except requests.exceptions.RequestException:
         current_time = datetime.now().strftime("%H:%M:%S")
         print(f"（{current_time}）{Colors.RED}未获取到数据，请检查网络连接。{Colors.RESET}")
@@ -110,16 +117,16 @@ except FileNotFoundError:
 rc_url = "https://zh.minecraft.wiki/api.php?action=query&format=json&list=recentchanges&formatversion=2&rcprop=user%7Ctitle%7Ctimestamp%7Cids%7Cloginfo%7Csizes%7Ccomment&rcshow=!bot&rclimit=25&rctype=edit%7Cnew%7Clog%7Cexternal"
 
 # 给第一次循环准备对比数据
-data1 = get_data(rc_url)
+previous_data = get_data(rc_url)
 
 while 1: # 主循环，每5秒获取一次最近更改数据
     time.sleep(5)
-    data2 = get_data(rc_url)
+    current_data = get_data(rc_url)
 
     # 根据时间戳差异确定新增数据
-    timestamps1 = [item['timestamp'] for item in data1['query']['recentchanges']]
-    timestamps2 = [item['timestamp'] for item in data2['query']['recentchanges']]
+    timestamps1 = [item['timestamp'] for item in previous_data['query']['recentchanges']]
+    timestamps2 = [item['timestamp'] for item in current_data['query']['recentchanges']]
     new_timestamps = [ts for ts in timestamps2 if ts not in timestamps1]
-    new_data = [item for item in data2['query']['recentchanges'] if item['timestamp'] in new_timestamps]
+    new_data = [item for item in current_data['query']['recentchanges'] if item['timestamp'] in new_timestamps]
     print_rc(new_data)
-    data1 = data2
+    previous_data = current_data

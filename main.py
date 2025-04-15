@@ -40,7 +40,8 @@ LOG_ACTION_MAP = {
     "create2": "登录状态创建账号",
     "byemail": "登录状态创建账号2",
     "migrated": "迁移",
-    "rights": "权限更改"
+    "rights": "权限更改",
+    "revert": "回退到旧版本"
 }
 
 def format_timestamp(timestamp_str): # 将UTC时间改为UTC+8

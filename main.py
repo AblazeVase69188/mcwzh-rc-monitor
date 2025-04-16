@@ -52,6 +52,55 @@ LOG_ACTION_MAP = {
     "revert": "回退到旧版本"
 }
 
+MESSAGE_TEMPLATES = {
+    "log": {
+        "upload": "（{magenta}上传日志{reset}）{cyan}{time}{reset}，{blue}{user}{reset}对{blue}{title}{reset}执行了{magenta}{action}{reset}操作，摘要为{comment}。",
+        "move": "（{magenta}移动日志{reset}）{cyan}{time}{reset}，{blue}{user}{reset}对{blue}{title}{reset}执行了{magenta}{action}{reset}操作，摘要为{comment}。",
+        "default": "（{magenta}{log_type}日志{reset}）{cyan}{time}{reset}，{blue}{user}{reset}对{blue}{title}{reset}执行了{magenta}{action}{reset}操作，摘要为{comment}。"
+    },
+    "edit": "{cyan}{time}{reset}，{blue}{user}{reset}在{blue}{title}{reset}做出编辑，字节更改为{magenta}{length_diff}{reset}，摘要为{comment}。",
+    "new": "{cyan}{time}{reset}，{blue}{user}{reset}创建{blue}{title}{reset}，字节更改为{magenta}{length_diff}{reset}，摘要为{comment}。"
+}
+
+def generate_message(item, special_users):
+    params = {
+        "time": format_timestamp(item['timestamp']),
+        "user": format_user(item['user'], special_users),
+        "title": f"{Colors.BLUE}{item['title']}{Colors.RESET}",
+        "comment": format_comment(item['comment']),
+        "magenta": Colors.MAGENTA,
+        "cyan": Colors.CYAN,
+        "blue": Colors.BLUE,
+        "reset": Colors.RESET
+    }
+
+    if item['type'] == 'log':
+        log_type = LOG_TYPE_MAP.get(item['logtype'], item['logtype'])
+        action = LOG_ACTION_MAP.get(item['logaction'], item['logaction'])
+        template_key = item['logtype'] if item['logtype'] in MESSAGE_TEMPLATES["log"] else "default"
+        template = MESSAGE_TEMPLATES["log"][template_key]
+        params.update({"log_type": log_type, "action": action})
+    else:
+        template = MESSAGE_TEMPLATES[item['type']]
+        params["length_diff"] = format_length_diff(item['newlen'], item['oldlen'])
+
+    return template.format(**params)
+
+def generate_url(item):
+    if item['type'] == 'log':
+        if item['logtype'] in ["upload", "move"]:  # 只有上传日志和移动日志具备有效revid值
+            return f"https://zh.minecraft.wiki/?diff={item['revid']}"
+        else:
+            return f"https://zh.minecraft.wiki/Special:%E6%97%A5%E5%BF%97/{item['logtype']}"
+    else:
+        return f"https://zh.minecraft.wiki/?diff={item['revid']}"
+
+def handle_notification(item, msg_body, special_users):
+    if item['user'] in special_users:
+        return  # 无巡查豁免权限用户执行操作才出现弹窗
+    url = generate_url(item)
+    notification(msg_body, url)
+
 def adjust_toast_output(text):  # 调整弹窗输出内容
     return re.sub(r'\d{2}:\d{2}:\d{2}，', '', re.sub(r'\033\[[0-9;]*m', '', text))
 
@@ -62,10 +111,7 @@ def notification(msg_body, url):  # 通过Windows系统产生弹窗通知
 
         playsound3.playsound("sound.mp3", block=False)
         with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):  # 防止关闭弹窗时后台输出其他内容
-            win11toast.toast(
-                body=msg_body,
-                on_click=open_url
-            )
+            win11toast.toast(body=msg_body, on_click=open_url)
 
     # 避免阻塞主线程
     notify_thread = threading.Thread(target=notify)
@@ -85,56 +131,19 @@ def format_user(user, special_users):  # 有巡查豁免权限的用户标记为
 def format_length_diff(newlen, oldlen):  # 字节数变化输出和mw一致
     return f"+{newlen - oldlen}" if newlen - oldlen > 0 else f"{newlen - oldlen}"
 
-def print_rc(new_data):  # 解析新更改数据并输出
-    if new_data:
-        for item in new_data:
-            length_difference = format_length_diff(item['newlen'], item['oldlen'])
-            formatted_time = format_timestamp(item['timestamp'])
-            comment_display = format_comment(item['comment'])
-            user_display = format_user(item['user'], special_users)
-            url = f"https://zh.minecraft.wiki/?diff={item['revid']}"
+def print_rc(new_data):
+    for item in new_data:
+        msg_console = generate_message(item, special_users)
+        url = generate_url(item)
 
-            if item['type'] == 'log':
-                logtype_display = LOG_TYPE_MAP.get(item['logtype'], item['logtype'])
-                logaction_display = LOG_ACTION_MAP.get(item['logaction'], item['logaction'])
-                if item['logtype'] == "upload":
-                    msg_console = f"（{Colors.MAGENTA}上传日志{Colors.RESET}）{Colors.CYAN}{formatted_time}{Colors.RESET}，{Colors.BLUE}{user_display}{Colors.RESET}对{Colors.BLUE}{item['title']}{Colors.RESET}执行了{Colors.MAGENTA}{logaction_display}{Colors.RESET}操作，摘要为{comment_display}。"
-                    print(msg_console)
-                    print(f"（{Colors.YELLOW}{url}{Colors.RESET}）")
-                    print(f"（特殊巡查：https://zh.minecraft.wiki/index.php?curid={item['pageid']}&action=markpatrolled&rcid={item['rcid']}）",end='\n\n')
-                elif item['logtype'] == "move":
-                    msg_console = f"（{Colors.MAGENTA}移动日志{Colors.RESET}）{Colors.CYAN}{formatted_time}{Colors.RESET}，{Colors.BLUE}{user_display}{Colors.RESET}对{Colors.BLUE}{item['title']}{Colors.RESET}执行了{Colors.MAGENTA}{logaction_display}{Colors.RESET}操作，摘要为{comment_display}。"
-                    print(msg_console)
-                    print(f"（{Colors.YELLOW}{url}{Colors.RESET}）", end='\n\n')
-                else:
-                    msg_console = f"（{Colors.MAGENTA}{logtype_display}日志{Colors.RESET}）{Colors.CYAN}{formatted_time}{Colors.RESET}，{Colors.BLUE}{user_display}{Colors.RESET}对{Colors.BLUE}{item['title']}{Colors.RESET}执行了{Colors.MAGENTA}{logaction_display}{Colors.RESET}操作，摘要为{comment_display}。"
-                    print(msg_console, end='\n\n')
-                msg_body = adjust_toast_output(msg_console)
-                if item['user'] not in special_users:  # 无巡查豁免权限用户执行操作才出现弹窗
-                    if item['logtype'] in ["upload", "move"]:  # 只有上传日志和移动日志具备有效revid值
-                        notification(msg_body, url)
-                    else:
-                        notification(msg_body,f"https://zh.minecraft.wiki/Special:%E6%97%A5%E5%BF%97/{item['logtype']}")
+        print(msg_console)
+        print(f"（{Colors.YELLOW}{url}{Colors.RESET}）")
+        if item['type'] == 'log':
+            print(f"（特殊巡查：https://zh.minecraft.wiki/index.php?curid={item['pageid']}&action=markpatrolled&rcid={item['rcid']}）")
+        print("")
 
-            elif item['type'] == 'edit':
-                msg_console = f"{Colors.CYAN}{formatted_time}{Colors.RESET}，{Colors.BLUE}{user_display}{Colors.RESET}在{Colors.BLUE}{item['title']}{Colors.RESET}做出编辑，字节更改为{Colors.MAGENTA}{length_difference}{Colors.RESET}，摘要为{comment_display}。"
-                print(msg_console)
-                print(f"（{Colors.YELLOW}{url}{Colors.RESET}）", end='\n\n')
-                msg_body = adjust_toast_output(msg_console)
-                if item['user'] not in special_users:
-                    notification(msg_body, url)
-
-            elif item['type'] == 'new':
-                msg_console = f"{Colors.CYAN}{formatted_time}{Colors.RESET}，{Colors.BLUE}{user_display}{Colors.RESET}创建{Colors.BLUE}{item['title']}{Colors.RESET}，字节更改为{Colors.MAGENTA}{length_difference}{Colors.RESET}，摘要为{comment_display}。"
-                print(msg_console)
-                print(f"（{Colors.YELLOW}{url}{Colors.RESET}）", end='\n\n')
-                msg_body = adjust_toast_output(msg_console)
-                if item['user'] not in special_users:
-                    notification(msg_body, url)
-
-            elif item['type'] == 'external':
-                print(item, end='\n\n')
-                win11toast.toast(body="external")
+        msg_body = adjust_toast_output(msg_console)
+        handle_notification(item, msg_body, special_users)
 
 def get_data(api_url): # 从Mediawiki API获取数据
     try:
@@ -144,6 +153,8 @@ def get_data(api_url): # 从Mediawiki API获取数据
     except requests.exceptions.RequestException:
         current_time = datetime.now().strftime("%H:%M:%S")
         print(f"（{current_time}）{Colors.RED}未获取到数据，请检查网络连接。{Colors.RESET}")
+        playsound3.playsound("sound.mp3", block=False)
+        win11toast.toast(body="未获取到数据，请检查网络连接。")
         input("按任意键退出")
         sys.exit(1)
 

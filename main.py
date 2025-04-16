@@ -1,14 +1,16 @@
-import sys
 import requests
 import pywikiapi as wiki
 import json
 import time
-import re
+import sys
 from datetime import datetime, timedelta
+import re
 import win11toast
+import playsound3
 import webbrowser
 import contextlib
 import io
+import threading
 
 class Colors:
     BLUE = '\033[94m'
@@ -50,19 +52,24 @@ LOG_ACTION_MAP = {
     "revert": "回退到旧版本"
 }
 
-def remove_ansi_codes(text):  # 不含颜色标记的字符串显示在弹窗中
-    return re.sub(r'\033\[[0-9;]*m', '', text)
+def adjust_toast_output(text):  # 调整弹窗输出内容
+    return re.sub(r'\d{2}:\d{2}:\d{2}，', '', re.sub(r'\033\[[0-9;]*m', '', text))
 
 def notification(msg_body, url):  # 通过Windows系统产生弹窗通知
-    def open_url(*args, **kwargs):
-        webbrowser.open(url)
+    def notify():
+        def open_url(*args, **kwargs):
+            webbrowser.open(url)
 
-    with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):  # 防止关闭弹窗时后台输出其他内容
-        win11toast.toast(
-            title="MCW rc monitor",
-            body=msg_body,
-            on_click=open_url
-        )
+        playsound3.playsound("sound.mp3", block=False)
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):  # 防止关闭弹窗时后台输出其他内容
+            win11toast.toast(
+                body=msg_body,
+                on_click=open_url
+            )
+
+    # 避免阻塞主线程
+    notify_thread = threading.Thread(target=notify)
+    notify_thread.start()
 
 def format_timestamp(timestamp_str):  # 将UTC时间改为UTC+8
     timestamp = datetime.strptime(timestamp_str, '%Y-%m-%dT%H:%M:%SZ')
@@ -102,16 +109,18 @@ def print_rc(new_data):  # 解析新更改数据并输出
                 else:
                     msg_console = f"（{Colors.MAGENTA}{logtype_display}日志{Colors.RESET}）{Colors.CYAN}{formatted_time}{Colors.RESET}，{Colors.BLUE}{user_display}{Colors.RESET}对{Colors.BLUE}{item['title']}{Colors.RESET}执行了{Colors.MAGENTA}{logaction_display}{Colors.RESET}操作，摘要为{comment_display}。"
                     print(msg_console, end='\n\n')
-                # 无巡查豁免权限用户执行操作才出现弹窗
-                msg_body = remove_ansi_codes(msg_console)
-                if item['user'] not in special_users:
-                    notification(msg_body, url)
+                msg_body = adjust_toast_output(msg_console)
+                if item['user'] not in special_users:  # 无巡查豁免权限用户执行操作才出现弹窗
+                    if item['logtype'] in ["upload", "move"]:  # 只有上传日志和移动日志具备有效revid值
+                        notification(msg_body, url)
+                    else:
+                        notification(msg_body,f"https://zh.minecraft.wiki/Special:%E6%97%A5%E5%BF%97/{item['logtype']}")
 
             elif item['type'] == 'edit':
                 msg_console = f"{Colors.CYAN}{formatted_time}{Colors.RESET}，{Colors.BLUE}{user_display}{Colors.RESET}在{Colors.BLUE}{item['title']}{Colors.RESET}做出编辑，字节更改为{Colors.MAGENTA}{length_difference}{Colors.RESET}，摘要为{comment_display}。"
                 print(msg_console)
                 print(f"（{Colors.YELLOW}{url}{Colors.RESET}）", end='\n\n')
-                msg_body = remove_ansi_codes(msg_console)
+                msg_body = adjust_toast_output(msg_console)
                 if item['user'] not in special_users:
                     notification(msg_body, url)
 
@@ -119,12 +128,13 @@ def print_rc(new_data):  # 解析新更改数据并输出
                 msg_console = f"{Colors.CYAN}{formatted_time}{Colors.RESET}，{Colors.BLUE}{user_display}{Colors.RESET}创建{Colors.BLUE}{item['title']}{Colors.RESET}，字节更改为{Colors.MAGENTA}{length_difference}{Colors.RESET}，摘要为{comment_display}。"
                 print(msg_console)
                 print(f"（{Colors.YELLOW}{url}{Colors.RESET}）", end='\n\n')
-                msg_body = remove_ansi_codes(msg_console)
+                msg_body = adjust_toast_output(msg_console)
                 if item['user'] not in special_users:
                     notification(msg_body, url)
 
             elif item['type'] == 'external':
                 print(item, end='\n\n')
+                win11toast.toast(body="external")
 
 def get_data(api_url): # 从Mediawiki API获取数据
     try:

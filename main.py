@@ -1,9 +1,14 @@
 import sys
 import requests
 import pywikiapi as wiki
-import time
 import json
+import time
+import re
 from datetime import datetime, timedelta
+import win11toast
+import webbrowser
+import contextlib
+import io
 
 class Colors:
     BLUE = '\033[94m'
@@ -21,6 +26,7 @@ LOG_TYPE_MAP = {
     "protect": "保护",
     "abusefilter": "滥用过滤器",
     "rights": "用户权限",
+    "upload": "上传",
     "move": "移动"
 }
 
@@ -44,46 +50,80 @@ LOG_ACTION_MAP = {
     "revert": "回退到旧版本"
 }
 
-def format_timestamp(timestamp_str): # 将UTC时间改为UTC+8
+def remove_ansi_codes(text):  # 不含颜色标记的字符串显示在弹窗中
+    return re.sub(r'\033\[[0-9;]*m', '', text)
+
+def notification(msg_body, url):  # 通过Windows系统产生弹窗通知
+    def open_url(*args, **kwargs):
+        webbrowser.open(url)
+
+    with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):  # 防止关闭弹窗时后台输出其他内容
+        win11toast.toast(
+            title="MCW rc monitor",
+            body=msg_body,
+            on_click=open_url
+        )
+
+def format_timestamp(timestamp_str):  # 将UTC时间改为UTC+8
     timestamp = datetime.strptime(timestamp_str, '%Y-%m-%dT%H:%M:%SZ')
     timestamp += timedelta(hours=8)
     return timestamp.strftime('%H:%M:%S')
 
-def format_comment(comment): # 摘要为空时输出（空）而不是【】
+def format_comment(comment):  # 摘要为空时输出（空）而不是【】
     return f"（空）" if comment == "" else f"{Colors.CYAN}{comment}{Colors.RESET}"
 
-def format_user(user, special_users): # 有巡查豁免权限的用户标记为绿色
+def format_user(user, special_users):  # 有巡查豁免权限的用户标记为绿色
     return f"{Colors.GREEN}{user}{Colors.RESET}" if user in special_users else f"{Colors.BLUE}{user}{Colors.RESET}"
 
-def format_length_diff(newlen, oldlen):
-    return f"+{newlen-oldlen}" if newlen - oldlen > 0 else f"{newlen-oldlen}"
+def format_length_diff(newlen, oldlen):  # 字节数变化输出和mw一致
+    return f"+{newlen - oldlen}" if newlen - oldlen > 0 else f"{newlen - oldlen}"
 
-def print_rc(new_data): # 解析新更改数据并输出
+def print_rc(new_data):  # 解析新更改数据并输出
     if new_data:
         for item in new_data:
             length_difference = format_length_diff(item['newlen'], item['oldlen'])
             formatted_time = format_timestamp(item['timestamp'])
             comment_display = format_comment(item['comment'])
             user_display = format_user(item['user'], special_users)
+            url = f"https://zh.minecraft.wiki/?diff={item['revid']}"
+
             if item['type'] == 'log':
                 logtype_display = LOG_TYPE_MAP.get(item['logtype'], item['logtype'])
                 logaction_display = LOG_ACTION_MAP.get(item['logaction'], item['logaction'])
                 if item['logtype'] == "upload":
-                    print(f"（{Colors.MAGENTA}上传日志{Colors.RESET}）{Colors.CYAN}{formatted_time}{Colors.RESET}，{Colors.BLUE}{user_display}{Colors.RESET}对{Colors.BLUE}{item['title']}{Colors.RESET}执行了{Colors.MAGENTA}{logaction_display}{Colors.RESET}操作，摘要为{comment_display}。")
-                    print(f"（{Colors.YELLOW}https://zh.minecraft.wiki/?diff={item['revid']}{Colors.RESET}）")
+                    msg_console = f"（{Colors.MAGENTA}上传日志{Colors.RESET}）{Colors.CYAN}{formatted_time}{Colors.RESET}，{Colors.BLUE}{user_display}{Colors.RESET}对{Colors.BLUE}{item['title']}{Colors.RESET}执行了{Colors.MAGENTA}{logaction_display}{Colors.RESET}操作，摘要为{comment_display}。"
+                    print(msg_console)
+                    print(f"（{Colors.YELLOW}{url}{Colors.RESET}）")
                     print(f"（特殊巡查：https://zh.minecraft.wiki/index.php?curid={item['pageid']}&action=markpatrolled&rcid={item['rcid']}）",end='\n\n')
                 elif item['logtype'] == "move":
-                    print(f"（{Colors.MAGENTA}移动日志{Colors.RESET}）{Colors.CYAN}{formatted_time}{Colors.RESET}，{Colors.BLUE}{user_display}{Colors.RESET}对{Colors.BLUE}{item['title']}{Colors.RESET}执行了{Colors.MAGENTA}{logaction_display}{Colors.RESET}操作，摘要为{comment_display}。")
-                    print(f"（{Colors.YELLOW}https://zh.minecraft.wiki/?diff={item['revid']}{Colors.RESET}）", end='\n\n')
+                    msg_console = f"（{Colors.MAGENTA}移动日志{Colors.RESET}）{Colors.CYAN}{formatted_time}{Colors.RESET}，{Colors.BLUE}{user_display}{Colors.RESET}对{Colors.BLUE}{item['title']}{Colors.RESET}执行了{Colors.MAGENTA}{logaction_display}{Colors.RESET}操作，摘要为{comment_display}。"
+                    print(msg_console)
+                    print(f"（{Colors.YELLOW}{url}{Colors.RESET}）", end='\n\n')
                 else:
-                    print(f"（{Colors.MAGENTA}{logtype_display}日志{Colors.RESET}）{Colors.CYAN}{formatted_time}{Colors.RESET}，{Colors.BLUE}{user_display}{Colors.RESET}对{Colors.BLUE}{item['title']}{Colors.RESET}执行了{Colors.MAGENTA}{logaction_display}{Colors.RESET}操作，摘要为{comment_display}。",end='\n\n')
+                    msg_console = f"（{Colors.MAGENTA}{logtype_display}日志{Colors.RESET}）{Colors.CYAN}{formatted_time}{Colors.RESET}，{Colors.BLUE}{user_display}{Colors.RESET}对{Colors.BLUE}{item['title']}{Colors.RESET}执行了{Colors.MAGENTA}{logaction_display}{Colors.RESET}操作，摘要为{comment_display}。"
+                    print(msg_console, end='\n\n')
+                # 无巡查豁免权限用户执行操作才出现弹窗
+                msg_body = remove_ansi_codes(msg_console)
+                if item['user'] not in special_users:
+                    notification(msg_body, url)
+
             elif item['type'] == 'edit':
-                print(f"{Colors.CYAN}{formatted_time}{Colors.RESET}，{Colors.BLUE}{user_display}{Colors.RESET}在{Colors.BLUE}{item['title']}{Colors.RESET}做出编辑，字节更改为{Colors.MAGENTA}{length_difference}{Colors.RESET}，摘要为{comment_display}。")
-                print(f"（{Colors.YELLOW}https://zh.minecraft.wiki/?diff={item['revid']}{Colors.RESET}）", end='\n\n')
+                msg_console = f"{Colors.CYAN}{formatted_time}{Colors.RESET}，{Colors.BLUE}{user_display}{Colors.RESET}在{Colors.BLUE}{item['title']}{Colors.RESET}做出编辑，字节更改为{Colors.MAGENTA}{length_difference}{Colors.RESET}，摘要为{comment_display}。"
+                print(msg_console)
+                print(f"（{Colors.YELLOW}{url}{Colors.RESET}）", end='\n\n')
+                msg_body = remove_ansi_codes(msg_console)
+                if item['user'] not in special_users:
+                    notification(msg_body, url)
+
             elif item['type'] == 'new':
-                print(f"{Colors.CYAN}{formatted_time}{Colors.RESET}，{Colors.BLUE}{user_display}{Colors.RESET}创建{Colors.BLUE}{item['title']}{Colors.RESET}，字节更改为{Colors.MAGENTA}{length_difference}{Colors.RESET}，摘要为{comment_display}。")
-                print(f"（{Colors.YELLOW}https://zh.minecraft.wiki/?diff={item['revid']}{Colors.RESET}）", end='\n\n')
-            elif item['type'] == 'external': # 未知类型，直接输出原文
+                msg_console = f"{Colors.CYAN}{formatted_time}{Colors.RESET}，{Colors.BLUE}{user_display}{Colors.RESET}创建{Colors.BLUE}{item['title']}{Colors.RESET}，字节更改为{Colors.MAGENTA}{length_difference}{Colors.RESET}，摘要为{comment_display}。"
+                print(msg_console)
+                print(f"（{Colors.YELLOW}{url}{Colors.RESET}）", end='\n\n')
+                msg_body = remove_ansi_codes(msg_console)
+                if item['user'] not in special_users:
+                    notification(msg_body, url)
+
+            elif item['type'] == 'external':
                 print(item, end='\n\n')
 
 def get_data(api_url): # 从Mediawiki API获取数据

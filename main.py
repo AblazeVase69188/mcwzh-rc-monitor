@@ -138,7 +138,7 @@ def print_rc(new_data):
 
         print(msg_console)
         print(f"（{Colors.YELLOW}{url}{Colors.RESET}）")
-        if item['type'] == 'log':
+        if item['logtype'] in ["upload", "move"]:
             print(f"（特殊巡查：https://zh.minecraft.wiki/index.php?curid={item['pageid']}&action=markpatrolled&rcid={item['rcid']}）")
         print("")
 

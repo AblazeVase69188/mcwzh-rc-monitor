@@ -7,10 +7,7 @@ from datetime import datetime, timedelta
 import re
 import win11toast
 import playsound3
-import webbrowser
-import contextlib
-import io
-import threading
+from winotify import Notification
 
 class Colors:
     BLUE = '\033[94m'
@@ -104,18 +101,15 @@ def handle_notification(item, msg_body, special_users):
 def adjust_toast_output(text):  # 调整弹窗输出内容
     return re.sub(r'\d{2}:\d{2}:\d{2}，', '', re.sub(r'\033\[[0-9;]*m', '', text))
 
-def notification(msg_body, url):  # 通过Windows系统产生弹窗通知
-    def notify():
-        def open_url(*args, **kwargs):
-            webbrowser.open(url)
-
-        playsound3.playsound("sound.mp3", block=False)
-        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):  # 防止关闭弹窗时后台输出其他内容
-            win11toast.toast(body=msg_body, on_click=open_url)
-
-    # 避免阻塞主线程
-    notify_thread = threading.Thread(target=notify)
-    notify_thread.start()
+def notification(msg_body,url):
+    toast = Notification(
+        app_id="Minecraft Wiki RecentChanges Monitor",
+        title="",
+        msg=msg_body
+    )
+    toast.add_actions(label="打开网页", launch=url)
+    playsound3.playsound("sound.mp3")
+    toast.show()
 
 def format_timestamp(timestamp_str):  # 将UTC时间改为UTC+8
     timestamp = datetime.strptime(timestamp_str, '%Y-%m-%dT%H:%M:%SZ')

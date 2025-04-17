@@ -108,8 +108,9 @@ def notification(msg_body,url):
         msg=msg_body
     )
     toast.add_actions(label="打开网页", launch=url)
-    playsound3.playsound("sound.mp3")
     toast.show()
+    playsound3.playsound("sound.mp3")
+
 
 def format_timestamp(timestamp_str):  # 将UTC时间改为UTC+8
     timestamp = datetime.strptime(timestamp_str, '%Y-%m-%dT%H:%M:%SZ')

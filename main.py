@@ -132,9 +132,8 @@ def print_rc(new_data):
 
         print(msg_console)
         print(f"（{Colors.YELLOW}{url}{Colors.RESET}）")
-        if item['type'] == "log":
-            if item['logtype'] in ["upload", "move"]:
-                print(f"（特殊巡查：https://zh.minecraft.wiki/index.php?curid={item['pageid']}&action=markpatrolled&rcid={item['rcid']}）")
+        if item['type'] == "log" and item['logtype'] == "upload":
+            print(f"（特殊巡查：https://zh.minecraft.wiki/index.php?curid={item['pageid']}&action=markpatrolled&rcid={item['rcid']}）")
         print("")
 
         msg_body = adjust_toast_output(msg_console)

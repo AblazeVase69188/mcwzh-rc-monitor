@@ -108,7 +108,7 @@ def notification(msg_body,url):
     )
     toast.add_actions(label="打开网页", launch=url)
     toast.show()
-    playsound3.playsound("sound.mp3")
+    playsound3.playsound("sound.mp3", block=False)
 
 def format_timestamp(timestamp_str):  # 将UTC时间改为UTC+8
     timestamp = datetime.strptime(timestamp_str, '%Y-%m-%dT%H:%M:%SZ')
@@ -201,9 +201,9 @@ while 1: # 主循环，每5秒获取一次最近更改数据
     current_data = get_data(rc_url)
 
     # 根据时间戳差异确定新增数据
-    timestamps1 = [item['timestamp'] for item in previous_data['query']['recentchanges']]
-    timestamps2 = [item['timestamp'] for item in current_data['query']['recentchanges']]
-    new_timestamps = [ts for ts in timestamps2 if ts not in timestamps1]
-    new_data = [item for item in current_data['query']['recentchanges'] if item['timestamp'] in new_timestamps]
+    rcid1 = [item['rcid'] for item in previous_data['query']['recentchanges']]
+    rcid2 = [item['rcid'] for item in current_data['query']['recentchanges']]
+    new_rcids = [ts for ts in rcid2 if ts not in rcid1]
+    new_data = [item for item in current_data['query']['recentchanges'] if item['rcid'] in new_rcids]
     print_rc(new_data)
     previous_data = current_data

@@ -45,7 +45,8 @@ LOG_ACTION_MAP = {
     "byemail": "登录状态创建账号2",
     "migrated": "迁移",
     "rights": "权限更改",
-    "revert": "回退到旧版本"
+    "revert": "恢复至旧版本",
+    "restore": "还原修订版本"
 }
 
 MESSAGE_TEMPLATES = {

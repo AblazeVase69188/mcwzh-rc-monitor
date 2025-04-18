@@ -5,7 +5,6 @@ import time
 import sys
 from datetime import datetime, timedelta
 import re
-import win11toast
 import playsound3
 from winotify import Notification
 
@@ -111,7 +110,6 @@ def notification(msg_body,url):
     toast.show()
     playsound3.playsound("sound.mp3")
 
-
 def format_timestamp(timestamp_str):  # 将UTC时间改为UTC+8
     timestamp = datetime.strptime(timestamp_str, '%Y-%m-%dT%H:%M:%SZ')
     timestamp += timedelta(hours=8)
@@ -142,17 +140,38 @@ def print_rc(new_data):
         handle_notification(item, msg_body, special_users)
 
 def get_data(api_url): # 从Mediawiki API获取数据
-    try:
-        response = requests.get(api_url,headers={"User-Agent": "AblazeVase69188's recent changes monitor (355846525@qq.com)"})
-        response.raise_for_status()
-        return response.json()
-    except requests.exceptions.RequestException:
-        current_time = datetime.now().strftime("%H:%M:%S")
-        print(f"（{current_time}）{Colors.RED}未获取到数据，请检查网络连接。{Colors.RESET}")
-        playsound3.playsound("sound.mp3", block=False)
-        win11toast.toast(body="未获取到数据，请检查网络连接。")
-        input("按任意键退出")
-        sys.exit(1)
+    tries = 0
+    while 1:
+        try:
+            response = requests.get(api_url, headers={"User-Agent": "AblazeVase69188's recent changes monitor (355846525@qq.com)"})
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException:
+            tries += 1
+            if tries > 1:
+                break
+
+            current_time = datetime.now().strftime("%H:%M:%S")
+            print(f"（{current_time}）{Colors.RED}未获取到数据，20秒后重试。{Colors.RESET}", end='\n\n')
+            toast = Notification(
+                app_id="Minecraft Wiki RecentChanges Monitor",
+                title="",
+                msg="未获取到数据，20秒后重试。"
+            )
+            toast.show()
+            playsound3.playsound("sound.mp3")
+            time.sleep(20)
+
+    print(f"{Colors.RED}重试失败，请检查网络连接。{Colors.RESET}")
+    toast = Notification(
+        app_id="Minecraft Wiki RecentChanges Monitor",
+        title="",
+        msg="重试失败，请检查网络连接。"
+    )
+    toast.show()
+    playsound3.playsound("sound.mp3")
+    input("按任意键退出")
+    sys.exit(1)
 
 # 登录
 with open("config.json", "r") as config_file:

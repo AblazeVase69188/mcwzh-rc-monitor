@@ -194,16 +194,16 @@ except FileNotFoundError:
 rc_url = "https://zh.minecraft.wiki/api.php?action=query&format=json&list=recentchanges&formatversion=2&rcprop=user%7Ctitle%7Ctimestamp%7Cids%7Cloginfo%7Csizes%7Ccomment&rcshow=!bot&rclimit=25&rctype=edit%7Cnew%7Clog%7Cexternal"
 
 # 给第一次循环准备对比数据
-previous_data = get_data(rc_url)
+initial_data = get_data(rc_url)
+last_rcid = max(item['rcid'] for item in initial_data['query']['recentchanges'])
 
-while 1: # 主循环，每5秒获取一次最近更改数据
+while 1:
     time.sleep(5)
     current_data = get_data(rc_url)
 
-    # 根据时间戳差异确定新增数据
-    rcid1 = [item['rcid'] for item in previous_data['query']['recentchanges']]
-    rcid2 = [item['rcid'] for item in current_data['query']['recentchanges']]
-    new_rcids = [ts for ts in rcid2 if ts not in rcid1]
-    new_data = [item for item in current_data['query']['recentchanges'] if item['rcid'] in new_rcids]
-    print_rc(new_data)
-    previous_data = current_data
+    # 提取所有rcid大于last_rcid的内容
+    new_items = [item for item in current_data['query']['recentchanges'] if item['rcid'] > last_rcid]
+    if new_items:
+        new_items_sorted = sorted(new_items, key=lambda x: x['rcid'])
+        print_rc(new_items_sorted)
+        last_rcid = max(item['rcid'] for item in new_items_sorted)

@@ -190,8 +190,8 @@ except FileNotFoundError:
     print("巡查豁免权限用户列表获取失败", end='\n\n')
     special_users = []
 
-# 最近更改：不要获取机器人编辑，每次获取25个编辑（SimpleBatchUpload大约每秒最多上传5个文件）
-rc_url = "https://zh.minecraft.wiki/api.php?action=query&format=json&list=recentchanges&formatversion=2&rcprop=user%7Ctitle%7Ctimestamp%7Cids%7Cloginfo%7Csizes%7Ccomment&rcshow=!bot&rclimit=25&rctype=edit%7Cnew%7Clog%7Cexternal"
+# 最近更改：不要获取机器人编辑，每次获取10个编辑
+rc_url = "https://zh.minecraft.wiki/api.php?action=query&format=json&list=recentchanges&formatversion=2&rcprop=user%7Ctitle%7Ctimestamp%7Cids%7Cloginfo%7Csizes%7Ccomment&rcshow=!bot&rclimit=10&rctype=edit%7Cnew%7Clog%7Cexternal"
 
 # 给第一次循环准备对比数据
 initial_data = get_data(rc_url)

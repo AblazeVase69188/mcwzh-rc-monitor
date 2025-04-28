@@ -4,8 +4,8 @@ import json
 import time
 import sys
 from datetime import datetime, timedelta
-import re
-import playsound3
+from re import sub
+from playsound3 import playsound
 from winotify import Notification
 
 class Colors:
@@ -99,7 +99,7 @@ def handle_notification(item, msg_body, special_users):
     notification(msg_body, url)
 
 def adjust_toast_output(text):  # 调整弹窗输出内容
-    return re.sub(r'\d{2}:\d{2}:\d{2}，', '', re.sub(r'\033\[[0-9;]*m', '', text))
+    return sub(r'\d{2}:\d{2}:\d{2}，', '', sub(r'\033\[[0-9;]*m', '', text))
 
 def notification(msg_body,url):
     toast = Notification(
@@ -109,7 +109,7 @@ def notification(msg_body,url):
     )
     toast.add_actions(label="打开网页", launch=url)
     toast.show()
-    playsound3.playsound("sound.mp3", block=False)
+    playsound("sound.mp3", block=False)
 
 def format_timestamp(timestamp_str):  # 将UTC时间改为UTC+8
     timestamp = datetime.strptime(timestamp_str, '%Y-%m-%dT%H:%M:%SZ')
@@ -159,7 +159,7 @@ def get_data(api_url): # 从Mediawiki API获取数据
                 msg="未获取到数据，20秒后重试。"
             )
             toast.show()
-            playsound3.playsound("sound.mp3")
+            playsound("sound.mp3")
             time.sleep(20)
 
     print(f"{Colors.RED}重试失败，请检查网络连接。{Colors.RESET}")
@@ -169,7 +169,7 @@ def get_data(api_url): # 从Mediawiki API获取数据
         msg="重试失败，请检查网络连接。"
     )
     toast.show()
-    playsound3.playsound("sound.mp3")
+    playsound("sound.mp3")
     input("按任意键退出")
     sys.exit(1)
 
@@ -200,6 +200,16 @@ last_rcid = max(item['rcid'] for item in initial_data['query']['recentchanges'])
 while 1:
     time.sleep(5)
     current_data = get_data(rc_url)
+
+    if min(item['rcid'] for item in current_data['query']['recentchanges'])>last_rcid:
+        print(f"{Colors.YELLOW}新更改数量超限，请打开最近更改页面查看。{Colors.RESET}", end='\n\n')
+        toast = Notification(
+            app_id="Minecraft Wiki RecentChanges Monitor",
+            title="",
+            msg="新更改超限警告"
+        )
+        toast.show()
+        playsound("sound.mp3", block=False)
 
     # 提取所有rcid大于last_rcid的内容
     new_items = [item for item in current_data['query']['recentchanges'] if item['rcid'] > last_rcid]

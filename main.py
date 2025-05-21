@@ -6,6 +6,7 @@ import sys
 from datetime import datetime, timedelta
 from re import sub
 from playsound3 import playsound
+from playsound3.playsound3 import PlaysoundException
 from winotify import Notification
 
 class Colors:
@@ -109,7 +110,13 @@ def notification(msg_body,url):
     )
     toast.add_actions(label="打开网页", launch=url)
     toast.show()
-    playsound("sound.mp3", block=False)
+    sound_play()
+
+def sound_play():
+    try:
+        playsound("sound.mp3", block=False)
+    except PlaysoundException:
+        pass
 
 def format_timestamp(timestamp_str):  # 将UTC时间改为UTC+8
     timestamp = datetime.strptime(timestamp_str, '%Y-%m-%dT%H:%M:%SZ')
@@ -159,7 +166,7 @@ def get_data(api_url): # 从Mediawiki API获取数据
                 msg="未获取到数据，20秒后重试。"
             )
             toast.show()
-            playsound("sound.mp3")
+            sound_play()
             time.sleep(20)
 
     print(f"{Colors.RED}重试失败，请检查网络连接。{Colors.RESET}")
@@ -169,7 +176,7 @@ def get_data(api_url): # 从Mediawiki API获取数据
         msg="重试失败，请检查网络连接。"
     )
     toast.show()
-    playsound("sound.mp3")
+    sound_play()
     input("按任意键退出")
     sys.exit(1)
 
@@ -209,7 +216,7 @@ while 1:
             msg="新更改超限警告"
         )
         toast.show()
-        playsound("sound.mp3", block=False)
+        sound_play()
 
     # 提取所有rcid大于last_rcid的内容
     new_items = [item for item in current_data['query']['recentchanges'] if item['rcid'] > last_rcid]

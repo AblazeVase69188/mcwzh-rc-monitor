@@ -5,4 +5,6 @@
 
 程序需要同目录存在`config.json`才能正常运作。在这之前你应该需要先在[[Special:机器人密码]]创建一个机器人并获得密码，然后填入`config.json`。`Autopatrolled_user.json`不存在时只会在后台输出提示，然后所有用户均视为无巡查豁免权限。`sound.mp3`不存在时不会输出任何提示，只是照常运作程序，但不会播放音效。
 
+使用前，请自行修改`"User-Agent": "(换成你自己的名字和联系方式)"`。
+
 程序采用与Minecraft Wiki相同的CC BY-NC-SA 3.0协议授权。

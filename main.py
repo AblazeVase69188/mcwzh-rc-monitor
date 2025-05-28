@@ -47,7 +47,8 @@ LOG_ACTION_MAP = {
     "migrated": "迁移",
     "rights": "权限更改",
     "revert": "恢复至旧版本",
-    "restore": "还原修订版本"
+    "restore": "还原修订版本",
+    "event": "更改日志可见性"
 }
 
 MESSAGE_TEMPLATES = {
@@ -150,7 +151,7 @@ def get_data(api_url): # 从Mediawiki API获取数据
     tries = 0
     while 1:
         try:
-            response = requests.get(api_url, headers={"User-Agent": "(换成你自己的名字和联系方式)"})
+            response = requests.get(api_url, headers={"User-Agent": "AblazeVase69188's recent changes monitor (355846525@qq.com)"})
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException:

@@ -26,7 +26,8 @@ LOG_TYPE_MAP = {
     "abusefilter": "滥用过滤器",
     "rights": "用户权限",
     "upload": "上传",
-    "move": "移动"
+    "move": "移动",
+    "renameuser": "用户更名"
 }
 
 LOG_ACTION_MAP = {
@@ -48,17 +49,19 @@ LOG_ACTION_MAP = {
     "rights": "权限更改",
     "revert": "恢复至旧版本",
     "restore": "还原修订版本",
-    "event": "更改日志可见性"
+    "event": "更改日志可见性",
+    "renameuser": "重命名用户"
 }
 
 MESSAGE_TEMPLATES = {
     "log": {
-        "upload": "（{magenta}上传日志{reset}）{cyan}{time}{reset}，{blue}{user}{reset}对{blue}{title}{reset}执行了{magenta}{action}{reset}操作，摘要为{comment}。",
-        "move": "（{magenta}移动日志{reset}）{cyan}{time}{reset}，{blue}{user}{reset}对{blue}{title}{reset}执行了{magenta}{action}{reset}操作，摘要为{comment}。",
-        "default": "（{magenta}{log_type}日志{reset}）{cyan}{time}{reset}，{blue}{user}{reset}对{blue}{title}{reset}执行了{magenta}{action}{reset}操作，摘要为{comment}。"
+        "upload": "（{magenta}上传日志{reset}）{cyan}{time}{reset}，{user}对{title}执行了{magenta}{action}{reset}操作，摘要为{comment}。",
+        "move": "（{magenta}移动日志{reset}）{cyan}{time}{reset}，{user}移动页面{title}至{target_title}，摘要为{comment}。",
+        "renameuser": "（{magenta}用户更名日志{reset}）{cyan}{time}{reset}，{user}重命名用户{olduser}为{newuser}，摘要为{comment}。",
+        "default": "（{magenta}{log_type}日志{reset}）{cyan}{time}{reset}，{user}对{title}执行了{magenta}{action}{reset}操作，摘要为{comment}。"
     },
-    "edit": "{cyan}{time}{reset}，{blue}{user}{reset}在{blue}{title}{reset}做出编辑，字节更改为{magenta}{length_diff}{reset}，摘要为{comment}。",
-    "new": "{cyan}{time}{reset}，{blue}{user}{reset}创建{blue}{title}{reset}，字节更改为{magenta}{length_diff}{reset}，摘要为{comment}。"
+    "edit": "{cyan}{time}{reset}，{user}在{title}做出编辑，字节更改为{magenta}{length_diff}{reset}，摘要为{comment}。",
+    "new": "{cyan}{time}{reset}，{user}创建{title}，字节更改为{magenta}{length_diff}{reset}，摘要为{comment}。"
 }
 
 def generate_message(item, special_users):
@@ -78,6 +81,11 @@ def generate_message(item, special_users):
         action = LOG_ACTION_MAP.get(item['logaction'], item['logaction'])
         template_key = item['logtype'] if item['logtype'] in MESSAGE_TEMPLATES["log"] else "default"
         template = MESSAGE_TEMPLATES["log"][template_key]
+        if item['logtype'] == 'move':
+            params["target_title"] = f"{Colors.BLUE}{item['logparams']['target_title']}{Colors.RESET}"
+        elif item['logtype'] == 'renameuser':
+            params["olduser"] = f"{Colors.BLUE}{item['logparams']['olduser']}{Colors.RESET}"
+            params["newuser"] = f"{Colors.BLUE}{item['logparams']['newuser']}{Colors.RESET}"
         params.update({"log_type": log_type, "action": action})
     else:
         template = MESSAGE_TEMPLATES[item['type']]

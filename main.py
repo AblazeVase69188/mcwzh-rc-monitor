@@ -161,7 +161,7 @@ def get_data(api_url): # 从Mediawiki API获取数据
     tries = 0
     while 1:
         try:
-            response = requests.get(api_url, headers={"User-Agent": "AblazeVase69188's recent changes monitor (355846525@qq.com)"})
+            response = requests.get(api_url, headers={"User-Agent": "(换成你自己的名字和联系方式)"})
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException:

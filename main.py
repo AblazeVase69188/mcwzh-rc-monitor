@@ -3,7 +3,7 @@ import pywikiapi as wiki
 import json
 import time
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime
 from re import sub
 from playsound3 import playsound
 from playsound3.playsound3 import PlaysoundException
@@ -55,13 +55,13 @@ LOG_ACTION_MAP = {
 
 MESSAGE_TEMPLATES = {
     "log": {
-        "upload": "（{magenta}上传日志{reset}）{cyan}{time}{reset}，{user}对{title}执行了{magenta}{action}{reset}操作，摘要为{comment}。",
-        "move": "（{magenta}移动日志{reset}）{cyan}{time}{reset}，{user}移动页面{title}至{target_title}，摘要为{comment}。",
-        "renameuser": "（{magenta}用户更名日志{reset}）{cyan}{time}{reset}，{user}重命名用户{olduser}为{newuser}，摘要为{comment}。",
-        "default": "（{magenta}{log_type}日志{reset}）{cyan}{time}{reset}，{user}对{title}执行了{magenta}{action}{reset}操作，摘要为{comment}。"
+        "upload": "（{magenta}上传日志{reset}）{time}，{user}对{title}执行了{action}操作，摘要为{comment}。",
+        "move": "（{magenta}移动日志{reset}）{time}，{user}移动页面{title}至{target_title}，摘要为{comment}。",
+        "renameuser": "（{magenta}用户更名日志{reset}）{time}，{user}重命名用户{olduser}为{newuser}，摘要为{comment}。",
+        "default": "（{magenta}{log_type}日志{reset}）{time}，{user}对{title}执行了{action}操作，摘要为{comment}。"
     },
-    "edit": "{cyan}{time}{reset}，{user}在{title}做出编辑，字节更改为{magenta}{length_diff}{reset}，摘要为{comment}。",
-    "new": "{cyan}{time}{reset}，{user}创建{title}，字节更改为{magenta}{length_diff}{reset}，摘要为{comment}。"
+    "edit": "{time}，{user}在{title}做出编辑，字节更改为{length_diff}，摘要为{comment}。",
+    "new": "{time}，{user}创建{title}，字节更改为{length_diff}，摘要为{comment}。"
 }
 
 def generate_message(item, special_users):
@@ -86,10 +86,10 @@ def generate_message(item, special_users):
         elif item['logtype'] == 'renameuser':
             params["olduser"] = f"{Colors.BLUE}{item['logparams']['olduser']}{Colors.RESET}"
             params["newuser"] = f"{Colors.BLUE}{item['logparams']['newuser']}{Colors.RESET}"
-        params.update({"log_type": log_type, "action": action})
+        params.update({"log_type": log_type, "action": f"{Colors.MAGENTA}{action}{Colors.RESET}"})
     else:
         template = MESSAGE_TEMPLATES[item['type']]
-        params["length_diff"] = format_length_diff(item['newlen'], item['oldlen'])
+        params["length_diff"] = f"{Colors.MAGENTA}{format_length_diff(item['newlen'], item['oldlen'])}{Colors.RESET}"
 
     return template.format(**params)
 
@@ -128,9 +128,10 @@ def sound_play():
         pass
 
 def format_timestamp(timestamp_str):  # 将UTC时间改为UTC+8
-    timestamp = datetime.strptime(timestamp_str, '%Y-%m-%dT%H:%M:%SZ')
-    timestamp += timedelta(hours=8)
-    return timestamp.strftime('%H:%M:%S')
+    time_part = timestamp_str[11:19]
+    hour = int(time_part[0:2])
+    hour = (hour + 8) % 24
+    return f"{Colors.CYAN}{hour:02d}{time_part[2:]}{Colors.RESET}"
 
 def format_comment(comment):  # 摘要为空时输出（空）而不是【】
     return f"（空）" if comment == "" else f"{Colors.CYAN}{comment}{Colors.RESET}"
@@ -139,7 +140,8 @@ def format_user(user, special_users):  # 有巡查豁免权限的用户标记为
     return f"{Colors.GREEN}{user}{Colors.RESET}" if user in special_users else f"{Colors.BLUE}{user}{Colors.RESET}"
 
 def format_length_diff(newlen, oldlen):  # 字节数变化输出和mw一致
-    return f"+{newlen - oldlen}" if newlen - oldlen > 0 else f"{newlen - oldlen}"
+    diff = newlen - oldlen
+    return f"+{diff}" if diff > 0 else f"{diff}"
 
 def print_rc(new_data):
     for item in new_data:

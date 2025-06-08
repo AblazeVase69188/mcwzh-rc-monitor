@@ -136,12 +136,6 @@ def generate_messages(item, special_users):
 
     return console_msg, toast_msg
 
-def handle_notification(item, toast_msg, special_users):
-    if item['user'] in special_users:
-        return
-    url = generate_url(item)
-    notification(toast_msg, url)
-
 def generate_url(item):
     if item['type'] == 'log':
         if item['logtype'] in ["upload", "move"]:  # 只有上传日志和移动日志具备有效revid值
@@ -173,7 +167,7 @@ def format_timestamp(timestamp_str):  # 将UTC时间改为UTC+8
     hour = (hour + 8) % 24
     return f"{Colors.CYAN}{hour:02d}{time_part[2:]}{Colors.RESET}"
 
-def format_comment(comment):  # 摘要为空时输出（空）而不是【】
+def format_comment(comment):  # 摘要为空时输出（空）
     return f"（空）" if comment == "" else f"{Colors.CYAN}{comment}{Colors.RESET}"
 
 def format_user(user, special_users):  # 有巡查豁免权限的用户标记为绿色
@@ -194,7 +188,8 @@ def print_rc(new_data):
             print(f"（特殊巡查：https://zh.minecraft.wiki/index.php?curid={item['pageid']}&action=markpatrolled&rcid={item['rcid']}）")
         print("")
 
-        handle_notification(item, toast_msg, special_users)
+        if item['user'] not in special_users: # 无巡查豁免权限用户执行操作才出现弹窗
+            notification(toast_msg, url)
 
 def get_data(api_url): # 从Mediawiki API获取数据
     tries = 0

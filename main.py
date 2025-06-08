@@ -74,7 +74,7 @@ TOAST_TEMPLATES = {
     "new": "{user}创建{title}，字节更改为{length_diff}，摘要为{comment}。"
 }
 
-def generate_messages(item, special_users):
+def generate_messages(item, special_users): # 生成控制台消息和弹窗消息文本
     base_params = {
         "time": format_timestamp(item['timestamp']),
         "user": item['user'],
@@ -136,7 +136,7 @@ def generate_messages(item, special_users):
 
     return console_msg, toast_msg
 
-def generate_url(item):
+def generate_url(item): # 生成url
     if item['type'] == 'log':
         if item['logtype'] in ["upload", "move"]:  # 只有上传日志和移动日志具备有效revid值
             return f"https://zh.minecraft.wiki/?diff={item['revid']}"
@@ -145,7 +145,7 @@ def generate_url(item):
     else:
         return f"https://zh.minecraft.wiki/?diff={item['revid']}"
 
-def notification(msg_body,url):
+def notification(msg_body,url): # 产生弹窗通知
     toast = Notification(
         app_id="Minecraft Wiki RecentChanges Monitor",
         title="",
@@ -155,29 +155,29 @@ def notification(msg_body,url):
     toast.show()
     sound_play()
 
-def sound_play():
+def sound_play(): # 播放音效
     try:
         playsound("sound.mp3", block=False)
     except PlaysoundException:
         pass
 
-def format_timestamp(timestamp_str):  # 将UTC时间改为UTC+8
+def format_timestamp(timestamp_str): # 将UTC时间改为UTC+8
     time_part = timestamp_str[11:19]
     hour = int(time_part[0:2])
     hour = (hour + 8) % 24
     return f"{Colors.CYAN}{hour:02d}{time_part[2:]}{Colors.RESET}"
 
-def format_comment(comment):  # 摘要为空时输出（空）
+def format_comment(comment): # 摘要为空时输出（空）
     return f"（空）" if comment == "" else f"{Colors.CYAN}{comment}{Colors.RESET}"
 
-def format_user(user, special_users):  # 有巡查豁免权限的用户标记为绿色
+def format_user(user, special_users): # 有巡查豁免权限的用户标记为绿色
     return f"{Colors.GREEN}{user}{Colors.RESET}" if user in special_users else f"{Colors.BLUE}{user}{Colors.RESET}"
 
-def format_length_diff(newlen, oldlen):  # 字节数变化输出和mw一致
+def format_length_diff(newlen, oldlen): # 字节数变化输出和mw一致
     diff = newlen - oldlen
     return f"+{diff}" if diff > 0 else f"{diff}"
 
-def print_rc(new_data):
+def print_rc(new_data): # 处理数据
     for item in new_data:
         console_msg, toast_msg = generate_messages(item, special_users)
         url = generate_url(item)
@@ -236,37 +236,38 @@ site.login(username, password)
 
 print("启动成功", end='\n\n')
 
+# 获取巡查豁免权限用户列表
 try:
     with open('Autopatrolled_user.json', 'r', encoding='utf-8') as special_users_file:
-        special_users = json.load(special_users_file)
+        special_users = set(json.load(special_users_file))
 except FileNotFoundError:
     print("巡查豁免权限用户列表获取失败", end='\n\n')
-    special_users = []
+    special_users = set()
 
-# 最近更改：不要获取机器人编辑，每次获取10个编辑
-rc_url = "https://zh.minecraft.wiki/api.php?action=query&format=json&list=recentchanges&formatversion=2&rcprop=user%7Ctitle%7Ctimestamp%7Cids%7Cloginfo%7Csizes%7Ccomment&rcshow=!bot&rclimit=10&rctype=edit%7Cnew%7Clog%7Cexternal"
+# 最近更改：不要获取机器人编辑，每次最多获取100个编辑
+rc_url = "https://zh.minecraft.wiki/api.php?action=query&format=json&list=recentchanges&formatversion=2&rcprop=user%7Ctitle%7Ctimestamp%7Cids%7Cloginfo%7Csizes%7Ccomment&rcshow=!bot&rclimit=100&rctype=edit%7Cnew%7Clog%7Cexternal"
 
 # 给第一次循环准备对比数据
-initial_data = get_data(rc_url)
-last_rcid = max(item['rcid'] for item in initial_data['query']['recentchanges'])
+initial_rc_url = "https://zh.minecraft.wiki/api.php?action=query&format=json&list=recentchanges&formatversion=2&rcprop=user%7Ctitle%7Ctimestamp%7Cids%7Cloginfo%7Csizes%7Ccomment&rcshow=!bot&rclimit=1&rctype=edit%7Cnew%7Clog%7Cexternal"
+initial_data = get_data(initial_rc_url)
+last_timestamp = initial_data['query']['recentchanges'][0]['timestamp']
+last_rcid = initial_data['query']['recentchanges'][0]['rcid']
 
-while 1:
+while 1: # 主循环，每5秒获取一次数据
     time.sleep(5)
-    current_data = get_data(rc_url)
+    current_url = f"{rc_url}&rcend={last_timestamp}" if last_timestamp else rc_url
+    current_data = get_data(current_url)
 
-    if min(item['rcid'] for item in current_data['query']['recentchanges'])>last_rcid:
-        print(f"{Colors.YELLOW}新更改数量超限，请打开最近更改页面查看。{Colors.RESET}", end='\n\n')
-        toast = Notification(
-            app_id="Minecraft Wiki RecentChanges Monitor",
-            title="",
-            msg="新更改超限警告"
-        )
-        toast.show()
-        sound_play()
+    # 过滤出rcid大于last_rcid的新更改
+    new_items = []
+    for item in current_data['query']['recentchanges']:
+        if item['rcid'] > last_rcid:
+            new_items.append(item)
 
-    # 提取所有rcid大于last_rcid的内容
-    new_items = [item for item in current_data['query']['recentchanges'] if item['rcid'] > last_rcid]
-    if new_items:
-        new_items_sorted = sorted(new_items, key=lambda x: x['rcid'])
-        print_rc(new_items_sorted)
-        last_rcid = max(item['rcid'] for item in new_items_sorted)
+    if not new_items:
+        continue
+
+    last_timestamp = new_items[0]['timestamp']
+    last_rcid = new_items[0]['rcid']
+
+    print_rc(new_items)

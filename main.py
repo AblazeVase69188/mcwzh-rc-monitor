@@ -195,7 +195,7 @@ def get_data(api_url): # 从Mediawiki API获取数据
     tries = 0
     while 1:
         try:
-            response = requests.get(api_url, headers={"User-Agent": "(换成你自己的名字和联系方式)"})
+            response = requests.get(api_url, headers={"User-Agent": ua})
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException:
@@ -230,6 +230,7 @@ with open("config.json", "r") as config_file:
     config = json.load(config_file)
     username = config["username"]
     password = config["password"]
+    ua = config["ua"]
 site = wiki.Site("https://zh.minecraft.wiki/api.php", retry_after_conn=30)
 site.login(username, password)
 

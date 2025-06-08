@@ -4,7 +4,6 @@ import json
 import time
 import sys
 from datetime import datetime
-from re import sub
 from playsound3 import playsound
 from playsound3.playsound3 import PlaysoundException
 from winotify import Notification
@@ -64,34 +63,84 @@ MESSAGE_TEMPLATES = {
     "new": "{time}，{user}创建{title}，字节更改为{length_diff}，摘要为{comment}。"
 }
 
-def generate_message(item, special_users):
-    params = {
+TOAST_TEMPLATES = {
+    "log": {
+        "upload": "（上传日志）{user}对{title}执行了{action}操作，摘要为{comment}。",
+        "move": "（移动日志）{user}移动页面{title}至{target_title}，摘要为{comment}。",
+        "renameuser": "（用户更名日志）{user}重命名用户{olduser}为{newuser}，摘要为{comment}。",
+        "default": "（{log_type}日志）{user}对{title}执行了{action}操作，摘要为{comment}。"
+    },
+    "edit": "{user}在{title}做出编辑，字节更改为{length_diff}，摘要为{comment}。",
+    "new": "{user}创建{title}，字节更改为{length_diff}，摘要为{comment}。"
+}
+
+def generate_messages(item, special_users):
+    base_params = {
         "time": format_timestamp(item['timestamp']),
-        "user": format_user(item['user'], special_users),
-        "title": f"{Colors.BLUE}{item['title']}{Colors.RESET}",
-        "comment": format_comment(item['comment']),
-        "magenta": Colors.MAGENTA,
-        "cyan": Colors.CYAN,
-        "blue": Colors.BLUE,
-        "reset": Colors.RESET
+        "user": item['user'],
+        "title": item['title'],
+        "comment": item['comment'],
     }
+    if item['type'] == 'log' and item['logtype'] == 'move':
+        base_params["target_title"] = item['logparams']['target_title']
+    elif item['type'] == 'log' and item['logtype'] == 'renameuser':
+        base_params["olduser"] = item['logparams']['olduser']
+        base_params["newuser"] = item['logparams']['newuser']
+
+    console_params = base_params.copy()
+    console_params.update({
+        "user": format_user(base_params["user"], special_users),
+        "title": f"{Colors.BLUE}{base_params['title']}{Colors.RESET}",
+        "comment": format_comment(base_params['comment']),
+        "magenta": Colors.MAGENTA,
+        "reset": Colors.RESET
+    })
+
+    toast_params = base_params.copy()
+    toast_params.update({
+        "comment": "（空）" if base_params['comment'] == "" else base_params['comment']
+    })
 
     if item['type'] == 'log':
         log_type = LOG_TYPE_MAP.get(item['logtype'], item['logtype'])
         action = LOG_ACTION_MAP.get(item['logaction'], item['logaction'])
-        template_key = item['logtype'] if item['logtype'] in MESSAGE_TEMPLATES["log"] else "default"
-        template = MESSAGE_TEMPLATES["log"][template_key]
-        if item['logtype'] == 'move':
-            params["target_title"] = f"{Colors.BLUE}{item['logparams']['target_title']}{Colors.RESET}"
-        elif item['logtype'] == 'renameuser':
-            params["olduser"] = f"{Colors.BLUE}{item['logparams']['olduser']}{Colors.RESET}"
-            params["newuser"] = f"{Colors.BLUE}{item['logparams']['newuser']}{Colors.RESET}"
-        params.update({"log_type": log_type, "action": f"{Colors.MAGENTA}{action}{Colors.RESET}"})
-    else:
-        template = MESSAGE_TEMPLATES[item['type']]
-        params["length_diff"] = f"{Colors.MAGENTA}{format_length_diff(item['newlen'], item['oldlen'])}{Colors.RESET}"
 
-    return template.format(**params)
+        console_params.update({
+            "log_type": log_type,
+            "action": f"{Colors.MAGENTA}{action}{Colors.RESET}"
+        })
+        if item['logaction'] == 'move':
+            console_params.update({
+                "target_title": f"{Colors.BLUE}{console_params["target_title"]}{Colors.RESET}"
+            })
+        elif item['logaction'] == 'renameuser':
+            console_params.update({
+                "olduser": f"{Colors.BLUE}{console_params["olduser"]}{Colors.RESET}",
+                "newuser": f"{Colors.BLUE}{console_params["newuser"]}{Colors.RESET}"
+            })
+
+        template_key = item['logtype'] if item['logtype'] in MESSAGE_TEMPLATES["log"] else "default"
+        console_msg = MESSAGE_TEMPLATES["log"][template_key].format(**console_params)
+
+        toast_params.update({
+            "log_type": log_type,
+            "action": action
+        })
+        toast_msg = TOAST_TEMPLATES["log"][template_key].format(**toast_params)
+    else:
+        console_params["length_diff"] = f"{Colors.MAGENTA}{format_length_diff(item['newlen'], item['oldlen'])}{Colors.RESET}"
+        console_msg = MESSAGE_TEMPLATES[item['type']].format(**console_params)
+
+        toast_params["length_diff"] = format_length_diff(item['newlen'], item['oldlen'])
+        toast_msg = TOAST_TEMPLATES[item['type']].format(**toast_params)
+
+    return console_msg, toast_msg
+
+def handle_notification(item, toast_msg, special_users):
+    if item['user'] in special_users:
+        return
+    url = generate_url(item)
+    notification(toast_msg, url)
 
 def generate_url(item):
     if item['type'] == 'log':
@@ -101,15 +150,6 @@ def generate_url(item):
             return f"https://zh.minecraft.wiki/Special:%E6%97%A5%E5%BF%97/{item['logtype']}"
     else:
         return f"https://zh.minecraft.wiki/?diff={item['revid']}"
-
-def handle_notification(item, msg_body, special_users):
-    if item['user'] in special_users:
-        return  # 无巡查豁免权限用户执行操作才出现弹窗
-    url = generate_url(item)
-    notification(msg_body, url)
-
-def adjust_toast_output(text):  # 调整弹窗输出内容
-    return sub(r'\d{2}:\d{2}:\d{2}，', '', sub(r'\033\[[0-9;]*m', '', text))
 
 def notification(msg_body,url):
     toast = Notification(
@@ -145,17 +185,16 @@ def format_length_diff(newlen, oldlen):  # 字节数变化输出和mw一致
 
 def print_rc(new_data):
     for item in new_data:
-        msg_console = generate_message(item, special_users)
+        console_msg, toast_msg = generate_messages(item, special_users)
         url = generate_url(item)
 
-        print(msg_console)
+        print(console_msg)
         print(f"（{Colors.YELLOW}{url}{Colors.RESET}）")
         if item['type'] == "log" and item['logtype'] == "upload":
             print(f"（特殊巡查：https://zh.minecraft.wiki/index.php?curid={item['pageid']}&action=markpatrolled&rcid={item['rcid']}）")
         print("")
 
-        msg_body = adjust_toast_output(msg_console)
-        handle_notification(item, msg_body, special_users)
+        handle_notification(item, toast_msg, special_users)
 
 def get_data(api_url): # 从Mediawiki API获取数据
     tries = 0

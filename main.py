@@ -184,7 +184,7 @@ def print_rc(new_data):
 
         print(console_msg)
         print(f"（{Colors.YELLOW}{url}{Colors.RESET}）")
-        if item['type'] == "log" and item['logtype'] == "upload":
+        if item['type'] == "log" and item['logtype'] == "upload" and item['user'] not in special_users:
             print(f"（特殊巡查：https://zh.minecraft.wiki/index.php?curid={item['pageid']}&action=markpatrolled&rcid={item['rcid']}）")
         print("")
 

@@ -251,20 +251,25 @@ rc_url = "https://zh.minecraft.wiki/api.php?action=query&format=json&list=recent
 initial_rc_url = "https://zh.minecraft.wiki/api.php?action=query&format=json&list=recentchanges&formatversion=2&rcprop=user%7Ctitle%7Ctimestamp%7Cids%7Cloginfo%7Csizes%7Ccomment&rcshow=!bot&rclimit=1&rctype=edit%7Cnew%7Clog%7Cexternal"
 initial_data = get_data(initial_rc_url)
 last_timestamp = initial_data['query']['recentchanges'][0]['timestamp']
+last_rcid = initial_data['query']['recentchanges'][0]['rcid']
 
 while 1: # 主循环，每5秒获取一次数据
     time.sleep(5)
-    current_url = f"{rc_url}&rcend={last_timestamp}" if last_timestamp else rc_url
+    current_url = f"{rc_url}&rcend={last_timestamp}"
     current_data = get_data(current_url)
 
+    # 过滤出rcid大于last_rcid的新更改
     new_items = []
-    for item in current_data['query']['recentchanges'][-2::-1]:
-        if item['timestamp']!=last_timestamp:
+    for item in current_data['query']['recentchanges']:
+        if item['rcid'] > last_rcid:
             new_items.append(item)
 
     if not new_items:
         continue
 
+    new_items = new_items[::-1]
+
     last_timestamp = new_items[0]['timestamp']
+    last_rcid = new_items[0]['rcid']
 
     print_rc(new_items)

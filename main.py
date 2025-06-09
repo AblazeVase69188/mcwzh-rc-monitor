@@ -257,7 +257,10 @@ while 1: # 主循环，每5秒获取一次数据
     current_url = f"{rc_url}&rcend={last_timestamp}" if last_timestamp else rc_url
     current_data = get_data(current_url)
 
-    new_items = current_data['query']['recentchanges'][-2::-1]
+    new_items = []
+    for item in current_data['query']['recentchanges'][-2::-1]:
+        if item['timestamp']!=last_timestamp:
+            new_items.append(item)
 
     if not new_items:
         continue

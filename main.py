@@ -74,22 +74,22 @@ TOAST_TEMPLATES = {
     "new": "{user}创建{title}，字节更改为{length_diff}，摘要为{comment}。"
 }
 
-def generate_messages(item, special_users): # 生成控制台消息和弹窗消息文本
+def generate_messages(data): # 生成控制台消息和弹窗消息文本
     base_params = {
-        "time": format_timestamp(item['timestamp']),
-        "user": item['user'],
-        "title": item['title'],
-        "comment": item['comment'],
+        "time": format_timestamp(data['timestamp']),
+        "user": data['user'],
+        "title": data['title'],
+        "comment": data['comment'],
     }
-    if item['type'] == 'log' and item['logtype'] == 'move':
-        base_params["target_title"] = item['logparams']['target_title']
-    elif item['type'] == 'log' and item['logtype'] == 'renameuser':
-        base_params["olduser"] = item['logparams']['olduser']
-        base_params["newuser"] = item['logparams']['newuser']
+    if data['type'] == 'log' and data['logtype'] == 'move':
+        base_params["target_title"] = data['logparams']['target_title']
+    elif data['type'] == 'log' and data['logtype'] == 'renameuser':
+        base_params["olduser"] = data['logparams']['olduser']
+        base_params["newuser"] = data['logparams']['newuser']
 
     console_params = base_params.copy()
     console_params.update({
-        "user": format_user(base_params["user"], special_users),
+        "user": format_user(base_params["user"]),
         "title": f"{Colors.BLUE}{base_params['title']}{Colors.RESET}",
         "comment": format_comment(base_params['comment']),
         "magenta": Colors.MAGENTA,
@@ -101,25 +101,25 @@ def generate_messages(item, special_users): # 生成控制台消息和弹窗消�
         "comment": "（空）" if base_params['comment'] == "" else base_params['comment']
     })
 
-    if item['type'] == 'log':
-        log_type = LOG_TYPE_MAP.get(item['logtype'], item['logtype'])
-        action = LOG_ACTION_MAP.get(item['logaction'], item['logaction'])
+    if data['type'] == 'log':
+        log_type = LOG_TYPE_MAP.get(data['logtype'], data['logtype'])
+        action = LOG_ACTION_MAP.get(data['logaction'], data['logaction'])
 
         console_params.update({
             "log_type": log_type,
             "action": f"{Colors.MAGENTA}{action}{Colors.RESET}"
         })
-        if item['logaction'] == 'move':
+        if data['logaction'] == 'move':
             console_params.update({
                 "target_title": f"{Colors.BLUE}{console_params["target_title"]}{Colors.RESET}"
             })
-        elif item['logaction'] == 'renameuser':
+        elif data['logaction'] == 'renameuser':
             console_params.update({
                 "olduser": f"{Colors.BLUE}{console_params["olduser"]}{Colors.RESET}",
                 "newuser": f"{Colors.BLUE}{console_params["newuser"]}{Colors.RESET}"
             })
 
-        template_key = item['logtype'] if item['logtype'] in MESSAGE_TEMPLATES["log"] else "default"
+        template_key = data['logtype'] if data['logtype'] in MESSAGE_TEMPLATES["log"] else "default"
         console_msg = MESSAGE_TEMPLATES["log"][template_key].format(**console_params)
 
         toast_params.update({
@@ -128,22 +128,22 @@ def generate_messages(item, special_users): # 生成控制台消息和弹窗消�
         })
         toast_msg = TOAST_TEMPLATES["log"][template_key].format(**toast_params)
     else:
-        console_params["length_diff"] = f"{Colors.MAGENTA}{format_length_diff(item['newlen'], item['oldlen'])}{Colors.RESET}"
-        console_msg = MESSAGE_TEMPLATES[item['type']].format(**console_params)
+        console_params["length_diff"] = f"{Colors.MAGENTA}{format_length_diff(data['newlen'], data['oldlen'])}{Colors.RESET}"
+        console_msg = MESSAGE_TEMPLATES[data['type']].format(**console_params)
 
-        toast_params["length_diff"] = format_length_diff(item['newlen'], item['oldlen'])
-        toast_msg = TOAST_TEMPLATES[item['type']].format(**toast_params)
+        toast_params["length_diff"] = format_length_diff(data['newlen'], data['oldlen'])
+        toast_msg = TOAST_TEMPLATES[data['type']].format(**toast_params)
 
     return console_msg, toast_msg
 
-def generate_url(item): # 生成url
-    if item['type'] == 'log':
-        if item['logtype'] in ["upload", "move"]:  # 只有上传日志和移动日志具备有效revid值
-            return f"https://zh.minecraft.wiki/?diff={item['revid']}"
+def generate_url(data): # 生成url
+    if data['type'] == 'log':
+        if data['logtype'] in ["upload", "move"]:  # 只有上传日志和移动日志具备有效revid值
+            return f"https://zh.minecraft.wiki/?diff={data['revid']}"
         else:
-            return f"https://zh.minecraft.wiki/Special:%E6%97%A5%E5%BF%97/{item['logtype']}"
+            return f"https://zh.minecraft.wiki/Special:%E6%97%A5%E5%BF%97/{data['logtype']}"
     else:
-        return f"https://zh.minecraft.wiki/?diff={item['revid']}"
+        return f"https://zh.minecraft.wiki/?diff={data['revid']}"
 
 def notification(msg_body,url): # 产生弹窗通知
     toast = Notification(
@@ -170,7 +170,7 @@ def format_timestamp(timestamp_str): # 将UTC时间改为UTC+8
 def format_comment(comment): # 摘要为空时输出（空）
     return f"（空）" if comment == "" else f"{Colors.CYAN}{comment}{Colors.RESET}"
 
-def format_user(user, special_users): # 有巡查豁免权限的用户标记为绿色
+def format_user(user): # 有巡查豁免权限的用户标记为绿色
     return f"{Colors.GREEN}{user}{Colors.RESET}" if user in special_users else f"{Colors.BLUE}{user}{Colors.RESET}"
 
 def format_length_diff(newlen, oldlen): # 字节数变化输出和mw一致
@@ -178,17 +178,17 @@ def format_length_diff(newlen, oldlen): # 字节数变化输出和mw一致
     return f"+{diff}" if diff > 0 else f"{diff}"
 
 def print_rc(new_data): # 处理数据
-    for item in new_data:
-        console_msg, toast_msg = generate_messages(item, special_users)
-        url = generate_url(item)
+    for data in new_data:
+        console_msg, toast_msg = generate_messages(data)
+        url = generate_url(data)
 
         print(console_msg)
         print(f"（{Colors.YELLOW}{url}{Colors.RESET}）")
-        if item['type'] == "log" and item['logtype'] == "upload" and item['user'] not in special_users:
-            print(f"（特殊巡查：https://zh.minecraft.wiki/index.php?curid={item['pageid']}&action=markpatrolled&rcid={item['rcid']}）")
+        if data['type'] == "log" and data['logtype'] == "upload" and data['user'] not in special_users:
+            print(f"（特殊巡查：https://zh.minecraft.wiki/index.php?curid={data['pageid']}&action=markpatrolled&rcid={data['rcid']}）")
         print("")
 
-        if item['user'] not in special_users: # 无巡查豁免权限用户执行操作才出现弹窗
+        if data['user'] not in special_users: # 无巡查豁免权限用户执行操作才出现弹窗
             notification(toast_msg, url)
 
 def get_data(api_url): # 从Mediawiki API获取数据
@@ -267,9 +267,9 @@ while 1: # 主循环，每5秒获取一次数据
     if not new_items:
         continue
 
-    new_items = new_items[::-1]
-
     last_timestamp = new_items[0]['timestamp']
     last_rcid = new_items[0]['rcid']
+
+    new_items = new_items[::-1]
 
     print_rc(new_items)

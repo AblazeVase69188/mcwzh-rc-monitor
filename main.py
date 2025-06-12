@@ -8,6 +8,11 @@ from playsound3 import playsound
 from playsound3.playsound3 import PlaysoundException
 from winotify import Notification
 
+CONFIG_FILE = "config.json"
+SPECIAL_USERS_FILE = "Autopatrolled_user.json"
+SOUND_FILE = "sound.mp3"
+WIKI_BASE_URL = "https://zh.minecraft.wiki"
+
 class Colors:
     BLUE = '\033[94m'
     GREEN = '\033[92m'
@@ -139,11 +144,11 @@ def generate_messages(data): # 生成控制台消息和弹窗消息文本
 def generate_url(data): # 生成url
     if data['type'] == 'log':
         if data['logtype'] in ["upload", "move"]:  # 只有上传日志和移动日志具备有效revid值
-            return f"https://zh.minecraft.wiki/?diff={data['revid']}"
+            return f"{WIKI_BASE_URL}/?diff={data['revid']}"
         else:
-            return f"https://zh.minecraft.wiki/Special:%E6%97%A5%E5%BF%97/{data['logtype']}"
+            return f"{WIKI_BASE_URL}/Special:%E6%97%A5%E5%BF%97/{data['logtype']}"
     else:
-        return f"https://zh.minecraft.wiki/?diff={data['revid']}"
+        return f"{WIKI_BASE_URL}/?diff={data['revid']}"
 
 def notification(msg_body,url): # 产生弹窗通知
     toast = Notification(
@@ -157,7 +162,7 @@ def notification(msg_body,url): # 产生弹窗通知
 
 def sound_play(): # 播放音效
     try:
-        playsound("sound.mp3", block=False)
+        playsound(f"{SOUND_FILE}", block=False)
     except PlaysoundException:
         pass
 
@@ -185,7 +190,7 @@ def print_rc(new_data): # 处理数据
         print(console_msg)
         print(f"（{Colors.YELLOW}{url}{Colors.RESET}）")
         if data['type'] == "log" and data['logtype'] == "upload" and data['user'] not in special_users:
-            print(f"（特殊巡查：https://zh.minecraft.wiki/index.php?curid={data['pageid']}&action=markpatrolled&rcid={data['rcid']}）")
+            print(f"（特殊巡查：{WIKI_BASE_URL}/index.php?curid={data['pageid']}&action=markpatrolled&rcid={data['rcid']}）")
         print("")
 
         if data['user'] not in special_users: # 无巡查豁免权限用户执行操作才出现弹窗
@@ -195,7 +200,7 @@ def get_data(api_url): # 从Mediawiki API获取数据
     tries = 0
     while 1:
         try:
-            response = requests.get(api_url, headers={"User-Agent": ua})
+            response = requests.get(api_url, headers={"User-Agent": user_agent})
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException:
@@ -226,32 +231,32 @@ def get_data(api_url): # 从Mediawiki API获取数据
     sys.exit(1)
 
 # 登录
-with open("config.json", "r") as config_file:
+with open(CONFIG_FILE, "r") as config_file:
     config = json.load(config_file)
     username = config["username"]
     password = config["password"]
-    ua = config["ua"]
-site = wiki.Site("https://zh.minecraft.wiki/api.php", retry_after_conn=30)
+    user_agent = config["user_agent"]
+site = wiki.Site(f"{WIKI_BASE_URL}/api.php", retry_after_conn=30)
 site.login(username, password)
-
-print("启动成功", end='\n\n')
 
 # 获取巡查豁免权限用户列表
 try:
-    with open('Autopatrolled_user.json', 'r', encoding='utf-8') as special_users_file:
+    with open(SPECIAL_USERS_FILE, 'r', encoding='utf-8') as special_users_file:
         special_users = set(json.load(special_users_file))
 except FileNotFoundError:
     print("巡查豁免权限用户列表获取失败", end='\n\n')
     special_users = set()
 
 # 最近更改：不要获取机器人编辑，每次最多获取100个编辑
-rc_url = "https://zh.minecraft.wiki/api.php?action=query&format=json&list=recentchanges&formatversion=2&rcprop=user%7Ctitle%7Ctimestamp%7Cids%7Cloginfo%7Csizes%7Ccomment&rcshow=!bot&rclimit=100&rctype=edit%7Cnew%7Clog%7Cexternal"
+rc_url = f"{WIKI_BASE_URL}/api.php?action=query&format=json&list=recentchanges&formatversion=2&rcprop=user|title|timestamp|ids|loginfo|sizes|comment&rcshow=!bot&rclimit=100&rctype=edit|new|log|external"
 
 # 给第一次循环准备对比数据
-initial_rc_url = "https://zh.minecraft.wiki/api.php?action=query&format=json&list=recentchanges&formatversion=2&rcprop=user%7Ctitle%7Ctimestamp%7Cids%7Cloginfo%7Csizes%7Ccomment&rcshow=!bot&rclimit=1&rctype=edit%7Cnew%7Clog%7Cexternal"
+initial_rc_url = f"{WIKI_BASE_URL}/api.php?action=query&format=json&list=recentchanges&formatversion=2&rcprop=user|title|timestamp|ids|loginfo|sizes|comment&rcshow=!bot&rclimit=1&rctype=edit|new|log|external"
 initial_data = get_data(initial_rc_url)
 last_timestamp = initial_data['query']['recentchanges'][0]['timestamp']
 last_rcid = initial_data['query']['recentchanges'][0]['rcid']
+
+print("启动成功", end='\n\n')
 
 while 1: # 主循环，每5秒获取一次数据
     time.sleep(5)

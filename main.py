@@ -1,5 +1,4 @@
 import requests
-import pywikiapi as wiki
 import json
 import time
 import sys
@@ -233,11 +232,7 @@ def get_data(api_url): # 从Mediawiki API获取数据
 # 登录
 with open(CONFIG_FILE, "r") as config_file:
     config = json.load(config_file)
-    username = config["username"]
-    password = config["password"]
     user_agent = config["user_agent"]
-site = wiki.Site(f"{WIKI_BASE_URL}/api.php", retry_after_conn=30)
-site.login(username, password)
 
 # 获取巡查豁免权限用户列表
 try:

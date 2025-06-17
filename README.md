@@ -12,10 +12,10 @@ The program automatically gets new content on RecentChanges of the Chinese Minec
 ## 使用方法
 程序需要同目录存在`config.json`才能正常运作。`Autopatrolled_user.json`不存在时只会在后台输出提示，然后所有用户均视为无巡查豁免权限。`sound.mp3`不存在时不会输出任何提示，只是照常运作程序，但不会播放音效。
 
-使用前，请自行修改`config.json`中的用户代理。
+使用前，请自行修改`config.json`中的用户代理。如果不设置用户代理，任何请求都会被服务器拒绝。
 
 ## 注意事项
-部分功能仅持有巡查员权限的用户可正常使用（此功能将在近期移除）。程序仅在Windows 11上可用（其实只是我没在Windows 10上面测试过而已）。如果5秒内的最近更改新内容大于100条，程序只会处理最新的100条。
+程序仅在Windows 11上可用（其实只是我没在Windows 10上面测试过而已）。如果5秒内的最近更改新内容大于100条，程序只会处理最新的100条。
 
 ## 授权协议
 程序采用与Minecraft Wiki相同的CC BY-NC-SA 3.0协议授权。

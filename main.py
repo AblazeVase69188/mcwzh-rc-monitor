@@ -188,8 +188,6 @@ def print_rc(new_data): # 处理数据
 
         print(console_msg)
         print(f"（{Colors.YELLOW}{url}{Colors.RESET}）")
-        if data['type'] == "log" and data['logtype'] == "upload" and data['user'] not in special_users:
-            print(f"（特殊巡查：{WIKI_BASE_URL}/index.php?curid={data['pageid']}&action=markpatrolled&rcid={data['rcid']}）")
         print("")
 
         if data['user'] not in special_users: # 无巡查豁免权限用户执行操作才出现弹窗

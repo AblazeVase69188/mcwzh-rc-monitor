@@ -216,11 +216,11 @@ def get_data(api_url): # 从Mediawiki API获取数据
             sound_play()
             time.sleep(20)
 
-    print(f"{Colors.RED}重试失败，请检查网络连接。{Colors.RESET}")
+    print(f"{Colors.RED}重试失败，请检查网络连接和用户代理。{Colors.RESET}")
     toast = Notification(
         app_id="Minecraft Wiki RecentChanges Monitor",
         title="",
-        msg="重试失败，请检查网络连接。"
+        msg="重试失败，请检查网络连接和用户代理。"
     )
     toast.show()
     sound_play()
@@ -244,7 +244,7 @@ except FileNotFoundError:
 rc_url = f"{WIKI_BASE_URL}/api.php?action=query&format=json&list=recentchanges&formatversion=2&rcprop=user|title|timestamp|ids|loginfo|sizes|comment&rcshow=!bot&rclimit=100&rctype=edit|new|log|external"
 
 # 给第一次循环准备对比数据
-initial_rc_url = f"{WIKI_BASE_URL}/api.php?action=query&format=json&list=recentchanges&formatversion=2&rcprop=user|title|timestamp|ids|loginfo|sizes|comment&rcshow=!bot&rclimit=1&rctype=edit|new|log|external"
+initial_rc_url = f"{WIKI_BASE_URL}/api.php?action=query&format=json&list=recentchanges&formatversion=2&rcprop=timestamp|ids&rcshow=!bot&rclimit=1&rctype=edit|new|log|external"
 initial_data = get_data(initial_rc_url)
 last_timestamp = initial_data['query']['recentchanges'][0]['timestamp']
 last_rcid = initial_data['query']['recentchanges'][0]['rcid']

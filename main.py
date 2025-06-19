@@ -230,7 +230,7 @@ def get_data(api_url): # 从Mediawiki API获取数据
 # 登录
 with open(CONFIG_FILE, "r") as config_file:
     config = json.load(config_file)
-    user_agent = config["user_agent"]
+    user_agent = config["User_Agent"]
 
 # 获取巡查豁免权限用户列表
 try:

@@ -389,8 +389,6 @@ initial_data = call_api(initial_params)
 last_rc_timestamp = initial_data["query"]["recentchanges"][0]["timestamp"]
 last_rcid = initial_data["query"]["recentchanges"][0]["rcid"]
 
-loop_count = 0
-
 print("启动成功", end='\n\n')
 
 time.sleep(interval)
@@ -423,38 +421,3 @@ while True:
     if loop_time < interval:
         time.sleep(interval - loop_time)
 
-    loop_count += 1
-    if loop_count == purge_loop_count and lang == 'zh':
-        loop_count = 0
-
-        # 箱子战利品（物品索引），长期存在可以刷新移除的脚本超时错误
-        print("正在检查“箱子战利品（物品索引）”是否存在脚本运行超时")
-        parse_response = requests.get(WIKI_API_URL, params={
-            "action": "parse",
-            "format": "json",
-            "page": "箱子战利品（物品索引）",
-            "prop": "encodedjsconfigvars",
-            "formatversion": 2,
-        }, headers={"User-Agent": user_agent})
-        parse_response.raise_for_status()
-        parse_data = parse_response.json()
-
-        encodedjsconfigvars = parse_data["parse"]["encodedjsconfigvars"]
-        if encodedjsconfigvars == """{\"ScribuntoErrors\":{\"ff37505e\":true},\"ScribuntoErrors-ff37505e\":\"<p>脚本运行超时。</p><p>没有可用的进一步细节。</p>\"}""":
-            print("“箱子战利品（物品索引）”出现脚本运行超时，正在刷新中")
-
-            purge_response = requests.post(WIKI_API_URL, data={
-                "action": "purge",
-                "format": "json",
-                "titles": "箱子战利品（物品索引）",
-                "formatversion": 2,
-            }, headers={"User-Agent": user_agent})
-            purge_response.raise_for_status()
-            purge_result = purge_response.json()
-            if purge_result["purge"][0]["purged"]:
-                print("“箱子战利品（物品索引）”刷新成功", end='\n\n')
-            else:
-                print("“箱子战利品（物品索引）”刷新失败", end='\n\n')
-
-        else:
-            print("“箱子战利品（物品索引）”未出现异常", end='\n\n')
